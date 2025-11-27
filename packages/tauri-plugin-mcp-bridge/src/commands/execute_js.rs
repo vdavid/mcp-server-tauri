@@ -55,33 +55,46 @@ pub async fn execute_js<R: Runtime>(
     let pending_clone = state.pending_results.clone();
 
     let unlisten = window.listen("__script_result", move |event| {
-        if let Ok(payload) = serde_json::from_str::<serde_json::Map<String, Value>>(event.payload()) {
-            if let Some(Value::String(event_exec_id)) = payload.get("exec_id") {
-                if event_exec_id == &exec_id_clone {
-                    // Forward to our result handler
-                    let pending = pending_clone.clone();
-                    let payload = payload.clone();
-                    let exec_id_for_task = exec_id_clone.clone();
+        let raw_payload = event.payload();
 
-                    tokio::spawn(async move {
-                        let mut pending_guard = pending.lock().await;
-                        if let Some(sender) = pending_guard.remove(&exec_id_for_task) {
-                            let result = if payload.get("success").and_then(|v| v.as_bool()).unwrap_or(false) {
-                                serde_json::json!({
-                                    "success": true,
-                                    "data": payload.get("data").cloned().unwrap_or(Value::Null)
-                                })
-                            } else {
-                                serde_json::json!({
-                                    "success": false,
-                                    "error": payload.get("error").and_then(|v| v.as_str()).unwrap_or("Unknown error")
-                                })
-                            };
+        match serde_json::from_str::<serde_json::Map<String, Value>>(raw_payload) {
+            Ok(payload) => {
+                if let Some(Value::String(event_exec_id)) = payload.get("exec_id") {
+                    if event_exec_id == &exec_id_clone {
+                        // Forward to our result handler
+                        let pending = pending_clone.clone();
+                        let payload = payload.clone();
+                        let exec_id_for_task = exec_id_clone.clone();
 
-                            let _ = sender.send(result);
-                        }
-                    });
+                        tokio::spawn(async move {
+                            let mut pending_guard = pending.lock().await;
+                            if let Some(sender) = pending_guard.remove(&exec_id_for_task) {
+                                let result = if payload
+                                    .get("success")
+                                    .and_then(|v| v.as_bool())
+                                    .unwrap_or(false)
+                                {
+                                    serde_json::json!({
+                                        "success": true,
+                                        "data": payload.get("data").cloned().unwrap_or(Value::Null)
+                                    })
+                                } else {
+                                    serde_json::json!({
+                                        "success": false,
+                                        "error": payload.get("error")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("Unknown error")
+                                    })
+                                };
+
+                                let _ = sender.send(result);
+                            }
+                        });
+                    }
                 }
+            }
+            Err(e) => {
+                eprintln!("[MCP] Failed to parse __script_result payload: {e}. Raw: {raw_payload}");
             }
         }
     });
@@ -90,34 +103,47 @@ pub async fn execute_js<R: Runtime>(
     let prepared_script = prepare_script(&script);
 
     // Create wrapped script that uses event emission for result communication
+    // We use a double-wrapped approach to catch both parse and runtime errors
     let wrapped_script = format!(
         r#"
-        (async () => {{
-            try {{
-                // Create function to execute user script
-                const __executeScript = async () => {{
-                    {prepared_script}
-                }};
-
-                // Execute and get result
-                const __result = await __executeScript();
-
-                // Send result back through event (invoke doesn't work from eval context)
-                window.__TAURI__.event.emit('__script_result', {{
-                    exec_id: '{exec_id}',
-                    success: true,
-                    data: __result !== undefined ? __result : null,
-                    error: null
-                }});
-            }} catch (error) {{
-                // Send error back through event
-                window.__TAURI__.event.emit('__script_result', {{
-                    exec_id: '{exec_id}',
-                    success: false,
-                    data: null,
-                    error: error.message || String(error)
-                }});
+        (function() {{
+            // Helper to send result back - checks for __TAURI__ availability
+            function __sendResult(success, data, error) {{
+                try {{
+                    if (window.__TAURI__ && window.__TAURI__.event) {{
+                        window.__TAURI__.event.emit('__script_result', {{
+                            exec_id: '{exec_id}',
+                            success: success,
+                            data: data,
+                            error: error
+                        }});
+                    }} else {{
+                        console.error('[MCP] __TAURI__ not available, cannot send result');
+                    }}
+                }} catch (e) {{
+                    console.error('[MCP] Failed to emit result:', e);
+                }}
             }}
+
+            // Execute the user script
+            (async () => {{
+                try {{
+                    // Create function to execute user script
+                    const __executeScript = async () => {{
+                        {prepared_script}
+                    }};
+
+                    // Execute and get result
+                    const __result = await __executeScript();
+
+                    __sendResult(true, __result !== undefined ? __result : null, null);
+                }} catch (error) {{
+                    __sendResult(false, null, error.message || String(error));
+                }}
+            }})().catch(function(error) {{
+                // Catch any unhandled promise rejections
+                __sendResult(false, null, error.message || String(error));
+            }});
         }})();
         "#
     );

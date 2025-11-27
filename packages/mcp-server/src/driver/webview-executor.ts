@@ -62,11 +62,12 @@ export async function executeInWebview(script: string): Promise<string> {
       await ensureReady();
       const client = getPluginClient();
 
-      // Send script directly - Rust handles wrapping and IPC callbacks
+      // Send script directly - Rust handles wrapping and IPC callbacks.
+      // Use 7s timeout (longer than Rust's 5s) so errors return before Node times out.
       const response = await client.sendCommand({
          command: 'execute_js',
          args: { script },
-      });
+      }, 7000);
 
       // console.log('executeInWebview response:', JSON.stringify(response));
 
