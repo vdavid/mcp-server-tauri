@@ -296,7 +296,8 @@ export const TOOLS: ToolDefinition[] = [
 
    {
       name: 'tauri_plugin_ipc_monitor',
-      description: 'Manage IPC monitoring (start or stop)',
+      description: 'Start or stop IPC monitoring to capture Tauri command invocations. ' +
+         'Use "start" to begin capturing, then tauri_plugin_ipc_get_events to retrieve captured events.',
       category: TOOL_CATEGORIES.IPC_PLUGIN,
       schema: ManageIPCMonitoringSchema,
       handler: async (args) => {
@@ -308,7 +309,9 @@ export const TOOLS: ToolDefinition[] = [
 
    {
       name: 'tauri_plugin_ipc_get_events',
-      description: 'Get captured IPC events',
+      description: 'Retrieve IPC events captured since monitoring started. ' +
+         'Shows Tauri command invocations with their arguments and responses. ' +
+         'Requires tauri_plugin_ipc_monitor to be started first.',
       category: TOOL_CATEGORIES.IPC_PLUGIN,
       schema: GetIPCEventsSchema,
       handler: async (args) => {
@@ -320,7 +323,8 @@ export const TOOLS: ToolDefinition[] = [
 
    {
       name: 'tauri_plugin_emit_event',
-      description: 'Emit custom events',
+      description: 'Emit a custom Tauri event that can be listened to by the frontend or backend. ' +
+         'Useful for testing event handlers or triggering application behavior.',
       category: TOOL_CATEGORIES.IPC_PLUGIN,
       schema: EmitTestEventSchema,
       handler: async (args) => {
