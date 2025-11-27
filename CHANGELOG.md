@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2025-11-26
+
+### Documentation
+- README for NPM package
+- crates.io badge to documentation
+- Improve GitHub release notes generation
+- Improve SEO with meta tags, sitemap, and page frontmatter
+
+### Fixed
+- Fix API docs link
+
 ## [0.1.2] - 2025-11-26
 
 ### Added
