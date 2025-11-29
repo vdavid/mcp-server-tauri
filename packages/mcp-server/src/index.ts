@@ -66,6 +66,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             name: tool.name,
             description: tool.description,
             inputSchema: zodToJsonSchema(tool.schema) as Record<string, unknown>,
+            annotations: tool.annotations,
          };
       }),
    };

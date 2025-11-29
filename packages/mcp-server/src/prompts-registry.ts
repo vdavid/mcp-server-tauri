@@ -54,8 +54,10 @@ export const PROMPTS: PromptDefinition[] = [
    {
       name: 'fix-webview-errors',
       description:
-         'Find and fix JavaScript errors in the Tauri webview. ' +
-         'Starts a session, retrieves console errors, and guides you through fixing them.',
+         '[Tauri Apps Only] Find and fix JavaScript errors in a running Tauri app. ' +
+         'Use ONLY for Tauri projects (with src-tauri/ and tauri.conf.json). ' +
+         'For browser debugging, use Chrome DevTools MCP instead. ' +
+         'For Electron apps, this prompt will NOT work.',
       arguments: [],
       handler: () => {
          return [
