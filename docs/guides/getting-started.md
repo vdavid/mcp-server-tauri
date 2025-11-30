@@ -36,9 +36,15 @@ tauri-plugin-mcp-bridge = "0.1"
 Then register the plugin in your app's entry point (e.g., `src-tauri/src/lib.rs` or `src-tauri/src/main.rs`):
 
 ```rust
-tauri::Builder::default()
-    .plugin(tauri_plugin_mcp_bridge::init())
-    // ... your other plugins and configuration
+let mut builder = tauri::Builder::default();
+// ... your other plugins and configuration
+
+#[cfg(debug_assertions)]
+{
+    builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+}
+
+builder
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 ```

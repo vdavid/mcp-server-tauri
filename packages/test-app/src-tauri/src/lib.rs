@@ -20,10 +20,16 @@ fn get_config() -> serde_json::Value {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_mcp_bridge::init())
-        .invoke_handler(tauri::generate_handler![greet, add_numbers, get_config])
+        .invoke_handler(tauri::generate_handler![greet, add_numbers, get_config]);
+
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+    }
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

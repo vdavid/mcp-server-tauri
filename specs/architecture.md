@@ -165,9 +165,14 @@ Responses include success/error status:
 
 ### Plugin Initialization
 ```rust
-tauri::Builder::default()
-    .plugin(tauri_plugin_mcp_bridge::init())
-    .run(tauri::generate_context!())
+let mut builder = tauri::Builder::default();
+
+#[cfg(debug_assertions)]
+{
+    builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+}
+
+builder.run(tauri::generate_context!())
 ```
 
 ## Common Patterns for LLM Agents
