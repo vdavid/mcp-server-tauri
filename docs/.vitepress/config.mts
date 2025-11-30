@@ -1,11 +1,17 @@
-import { defineConfig } from 'vitepress';
+import { defineConfig, type HeadConfig } from 'vitepress';
 import llmstxt from 'vitepress-plugin-llms';
 
 // Use /mcp-server-tauri/ for GitHub Pages, / for local dev
 // eslint-disable-next-line no-process-env
-const base = process.env.VITEPRESS_BASE || '/';
+const base = process.env.VITEPRESS_BASE || '/',
+      // eslint-disable-next-line no-process-env
+      isProd = process.env.NODE_ENV === 'production';
 
 const siteUrl = 'https://hypothesi.github.io/mcp-server-tauri';
+
+const analyticsHead: HeadConfig[] = isProd
+   ? [ [ 'script', { defer: '', src: 'https://cloud.umami.is/script.js', 'data-website-id': '5a8a158d-72e4-4908-8598-b49127fc9494' } ] ]
+   : [];
 
 const siteDescription =
    'An MCP server that provides AI assistants with tools to interact with ' +
@@ -49,6 +55,8 @@ export default defineConfig({
       [ 'meta', { name: 'author', content: 'Hypothesi' } ],
       [ 'meta', { name: 'robots', content: 'index, follow' } ],
       [ 'link', { rel: 'canonical', href: siteUrl } ],
+      // Analytics (production only)
+      ...analyticsHead,
    ],
 
    appearance: 'dark', // Enable theme toggle, default to dark
