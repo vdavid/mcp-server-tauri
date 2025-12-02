@@ -31,6 +31,12 @@ export async function readLogs(options: ReadLogsOptions): Promise<string> {
       }
 
       if (source === 'android') {
+         // Find adb - check ANDROID_HOME first, then fall back to PATH
+         // eslint-disable-next-line no-process-env
+         const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+
+         const adbPath = androidHome ? `${androidHome}/platform-tools/adb` : 'adb';
+
          const args = [ 'logcat', '-d' ];
 
          if (since) {
@@ -56,7 +62,7 @@ export async function readLogs(options: ReadLogsOptions): Promise<string> {
             args.push('-t', lines.toString());
          }
 
-         const { stdout } = await execa('logcat', [ '-d', '-t', lines.toString() ], { timeout: 5000 });
+         const { stdout } = await execa(adbPath, args, { timeout: 10000 });
 
          output = stdout;
       } else if (source === 'ios') {
