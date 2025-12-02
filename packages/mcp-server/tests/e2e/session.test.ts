@@ -98,4 +98,35 @@ describe('Session Manager E2E Tests', () => {
          await manageDriverSession('stop');
       });
    });
+
+   describe('Session Status', () => {
+      it('should return disconnected status when no session is active', async () => {
+         // Ensure no session is active
+         await manageDriverSession('stop');
+
+         const result = await manageDriverSession('status'),
+               status = JSON.parse(result);
+
+         expect(status.connected).toBe(false);
+         expect(status.app).toBeNull();
+         expect(status.host).toBeNull();
+         expect(status.port).toBeNull();
+      }, TIMEOUT);
+
+      it('should return connected status after starting session', async () => {
+         await manageDriverSession('start');
+
+         const result = await manageDriverSession('status'),
+               status = JSON.parse(result);
+
+         expect(status.connected).toBe(true);
+         expect(status.app).toBeDefined();
+         expect(status.host).toBeDefined();
+         expect(status.port).toBeDefined();
+      }, TIMEOUT);
+
+      afterAll(async () => {
+         await manageDriverSession('stop');
+      });
+   });
 });

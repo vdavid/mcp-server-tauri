@@ -1,6 +1,6 @@
 ---
 title: API Reference - What Your AI Can Do
-description: Explore 26 powerful MCP tools for Tauri development including project management, mobile development, UI automation, and IPC debugging.
+description: Explore 16 powerful MCP tools for Tauri development including mobile development, UI automation, and IPC debugging.
 head:
   - - meta
     - name: keywords
@@ -13,7 +13,7 @@ import { Wrench, Smartphone, Target, Zap, Rocket, Bug, FlaskConical, Activity, M
 
 # What Your AI Can Do
 
-Once configured, your AI assistant has **26 powerful tools** plus **slash commands** to help you build, test, and debug your Tauri application. Just ask in natural language!
+Once configured, your AI assistant has **16 powerful tools** plus **slash commands** to help you build, test, and debug your Tauri application. Just ask in natural language!
 
 ## <MessageSquareCode :size="24" :stroke-width="2" class="heading-icon" /> Slash Commands
 
@@ -21,27 +21,12 @@ For guided, multi-step workflows, use **slash commands** (prompts):
 
 | Command | What It Does |
 |---------|--------------|
+| `/setup` | Set up the MCP bridge plugin in your Tauri project |
 | `/fix-webview-errors` | Find and fix JavaScript errors in your webview |
 
 These commands guide your AI through a complete workflow, using multiple tools automatically.
 
 [Learn more about prompts →](/api/prompts)
-
-## <Wrench :size="24" :stroke-width="2" class="heading-icon" /> Project Management
-
-Your AI can help manage your Tauri project without you leaving the conversation.
-
-**Build & Development**
-- Run any Tauri CLI command (`dev`, `build`, `init`, etc.)
-- Read and understand your app's configuration
-- Modify settings in `tauri.conf.json`
-- Look up Tauri documentation when needed
-
-::: tip Example
-"Run my app in development mode" or "Change the window title to 'My App'"
-:::
-
-[View all project management capabilities →](/api/project-management)
 
 ## <Smartphone :size="24" :stroke-width="2" class="heading-icon" /> Mobile Development
 
@@ -49,12 +34,13 @@ Work with Android and iOS without switching tools.
 
 **Device Management**
 - See what emulators and simulators you have
-- Launch Android emulators or iOS simulators
 - Check device status and availability
 
 ::: tip Example
-"Show me my Android emulators" or "Start the Pixel 6 emulator"
+"Show me my Android emulators" or "List available iOS simulators"
 :::
+
+[View mobile development capabilities →](/api/mobile-development)
 
 ## <Target :size="24" :stroke-width="2" class="heading-icon" /> UI Testing & Automation
 
@@ -149,6 +135,6 @@ You don't need to understand this to use it - just talk to your AI naturally!
 
 ## Next Steps
 
-- Browse the [detailed tool reference](/api/project-management) if you want to know exactly what's available
+- Browse the [detailed tool reference](/api/ui-automation) if you want to know exactly what's available
 - Check out the [Getting Started Guide](/guides/getting-started) for setup instructions
 - Just start asking your AI for help with your Tauri app!

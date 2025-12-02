@@ -13,10 +13,8 @@ A **Model Context Protocol (MCP) server** that enables AI assistants like Claude
 |----------|-------------|
 | 🎯 **UI Automation** | Screenshots, clicks, typing, scrolling, element finding |
 | 🔍 **IPC Monitoring** | Capture and inspect Tauri IPC calls in real-time |
-| 📱 **Mobile Dev** | Manage Android emulators & iOS simulators |
-| 🛠️ **CLI Integration** | Run any Tauri command (`init`, `dev`, `build`, etc.) |
-| ⚙️ **Configuration** | Read/write Tauri config files with validation |
-| 📋 **Logs** | Stream Android logcat, iOS device logs, system logs |
+| 📱 **Mobile Dev** | List Android emulators & iOS simulators |
+| 📋 **Logs** | Stream console, Android logcat, iOS, and system logs |
 
 ## Quick Start
 
@@ -54,51 +52,38 @@ npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
 
 Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
 
-## Available Tools
+## Available Tools (16 total)
 
 ### UI Automation
 
 | Tool | Description |
 |------|-------------|
-| `tauri_webview_screenshot` | Capture webview screenshots |
-| `tauri_list_windows` | List all open webview windows |
+| `tauri_driver_session` | Start/stop/status automation session |
 | `tauri_webview_find_element` | Find elements by selector |
-| `tauri_webview_interact` | Click, scroll, swipe, long-press |
+| `tauri_read_logs` | Read console, Android, iOS, or system logs |
+| `tauri_webview_interact` | Click, scroll, swipe, focus, long-press |
+| `tauri_webview_screenshot` | Capture webview screenshots |
 | `tauri_webview_keyboard` | Type text or send key events |
 | `tauri_webview_wait_for` | Wait for elements, text, or events |
 | `tauri_webview_get_styles` | Get computed CSS styles |
 | `tauri_webview_execute_js` | Execute JavaScript in webview |
-| `tauri_webview_focus_element` | Focus on elements |
-| `tauri_driver_get_console_logs` | Get browser console logs |
-| `tauri_read_platform_logs` | Read Android/iOS/system logs |
-| `tauri_driver_session` | Start/stop automation session |
+| `tauri_list_windows` | List all open webview windows |
 
 ### IPC & Plugin
 
 | Tool | Description |
 |------|-------------|
-| `tauri_plugin_execute_ipc` | Execute Tauri IPC commands |
-| `tauri_plugin_get_window_info` | Get window information |
-| `tauri_plugin_get_backend_state` | Get app metadata and state |
-| `tauri_plugin_ipc_monitor` | Start/stop IPC monitoring |
-| `tauri_plugin_ipc_get_events` | Get captured IPC events |
-| `tauri_plugin_emit_event` | Emit custom events |
+| `tauri_ipc_execute_command` | Execute Tauri IPC commands |
+| `tauri_ipc_get_backend_state` | Get app metadata and state |
+| `tauri_ipc_monitor` | Start/stop IPC monitoring |
+| `tauri_ipc_get_captured` | Get captured IPC traffic |
+| `tauri_ipc_emit_event` | Emit custom events |
 
 ### Mobile Development
 
 | Tool | Description |
 |------|-------------|
 | `tauri_list_devices` | List Android devices and iOS simulators |
-| `tauri_launch_emulator` | Launch Android AVD or iOS Simulator |
-
-### Project Management
-
-| Tool | Description |
-|------|-------------|
-| `tauri_run_command` | Run any Tauri CLI command |
-| `tauri_read_config` | Read Tauri config files |
-| `tauri_write_config` | Write config files with validation |
-| `tauri_get_docs` | Fetch Tauri documentation |
 
 ## Links
 

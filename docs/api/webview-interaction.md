@@ -19,7 +19,7 @@ Perform various interaction gestures on webview elements.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `action` | string | Yes | Action: 'click', 'double-click', 'long-press', 'scroll', 'swipe' |
+| `action` | string | Yes | Action: 'click', 'double-click', 'long-press', 'scroll', 'swipe', 'focus' |
 | `selector` | string | No | CSS selector for the element to interact with |
 | `x` | number | No | X coordinate for direct coordinate interaction |
 | `y` | number | No | Y coordinate for direct coordinate interaction |
@@ -67,6 +67,13 @@ Perform various interaction gestures on webview elements.
   "toX": 200,
   "toY": 400,
   "duration": 500
+}
+
+// Focus an element
+{
+  "tool": "tauri_webview_interact",
+  "action": "focus",
+  "selector": "#username-input"
 }
 ```
 
@@ -221,25 +228,6 @@ Get computed CSS styles for elements.
 ### Response
 
 Returns a JSON string with the computed styles.
-
-## tauri_webview_focus_element
-
-Focus on a specific element in the webview.
-
-### Parameters
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `selector` | string | Yes | CSS selector for element to focus |
-
-### Example
-
-```javascript
-{
-  "tool": "tauri_webview_focus_element",
-  "selector": "#username-input"
-}
-```
 
 ## Common Patterns
 

@@ -7,7 +7,6 @@ import {
    waitFor,
    getStyles,
    executeJavaScript,
-   focusElement,
 } from '../../src/driver/webview-interactions';
 
 /**
@@ -233,15 +232,15 @@ describe('Webview Interactions E2E Tests', () => {
    });
 
    describe('Focus and Keyboard Management', () => {
-      it('should focus on element', async () => {
-         const result = await focusElement({ selector: 'input' });
+      it('should focus on element via interact action', async () => {
+         const result = await interact({ action: 'focus', selector: 'input' });
 
          expect(result).toContain('Focused element');
       }, TIMEOUT);
 
       it('should dismiss keyboard via executeJavaScript', async () => {
          // First focus an element
-         await focusElement({ selector: 'input' });
+         await interact({ action: 'focus', selector: 'input' });
 
          // Then dismiss keyboard by blurring
          const result = await executeJavaScript({ script: 'document.activeElement?.blur(); return "dismissed"' });

@@ -22,13 +22,77 @@ Before you begin, ensure you have:
 - An existing **Tauri 2.x** application
 - **Node.js** 20+ and npm
 - **Rust** and Cargo
-- An MCP-compatible AI Assistant (Claude Code, Cursor, VS Code, etc.)
+- An MCP-compatible AI Assistant (Claude Code, Cursor, Windsurf, VS Code, etc.)
 
-## Step 1: Add the MCP Bridge Plugin to Your Tauri App
+## Step 1: Configure Your AI Assistant
 
-The MCP Bridge plugin enables communication between the MCP server and your Tauri application.
+First, add the MCP server to your AI assistant using [install-mcp](https://www.npmjs.com/package/install-mcp):
 
-### Install the Rust Plugin
+```bash
+npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
+```
+
+Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
+
+<details>
+<summary>Manual Configuration</summary>
+
+If you prefer to configure manually, add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "tauri": {
+      "command": "npx",
+      "args": ["-y", "@hypothesi/tauri-mcp-server"]
+    }
+  }
+}
+```
+
+**Config file locations:**
+- **Claude Code:** Cmd/Ctrl+Shift+P → "MCP: Edit Config"
+- **Cursor:** `Cursor Settings` → `MCP` → `New MCP Server`
+- **VS Code:** Add to `settings.json` under `mcp.servers`
+- **Windsurf:** Cascade pane → MCPs icon → settings icon
+- **Cline:** See [Cline MCP configuration guide](https://docs.cline.bot/mcp/configuring-mcp-servers)
+
+</details>
+
+**Restart your AI assistant** after adding the configuration.
+
+## Step 2: Configure Your Tauri App
+
+Now add the MCP Bridge plugin to your Tauri app. Pick your path:
+
+<div class="setup-options">
+
+### ⚡ Quick Setup (Recommended)
+
+Just type this in your AI assistant:
+
+```
+/setup
+```
+
+**That's it.** Your AI will automatically:
+- ✅ Add the Rust crate to `Cargo.toml`
+- ✅ Register the plugin in your app
+- ✅ Enable `withGlobalTauri`
+- ✅ Add required permissions
+
+::: tip Zero manual configuration
+The `/setup` command examines your project and makes all the right changes. It adapts to your specific setup—no copy-pasting required.
+:::
+
+---
+
+### 🔧 Manual Setup
+
+<details>
+<summary>Prefer to do it yourself? Click here for step-by-step instructions</summary>
+
+#### 1. Install the Rust Plugin
 
 From your `src-tauri` directory:
 
@@ -38,7 +102,9 @@ cargo add tauri-plugin-mcp-bridge
 
 Or manually add to `Cargo.toml`: <code>tauri-plugin-mcp-bridge = "{{ versions.plugin.cargo }}"</code>
 
-Then register the plugin in your app's entry point (e.g., `src-tauri/src/lib.rs` or `src-tauri/src/main.rs`):
+#### 2. Register the Plugin
+
+In your app's entry point (`src-tauri/src/lib.rs` or `src-tauri/src/main.rs`):
 
 ```rust
 let mut builder = tauri::Builder::default();
@@ -54,10 +120,9 @@ builder
     .expect("error while running tauri application");
 ```
 
-### Enable Global Tauri
+#### 3. Enable Global Tauri
 
-::: warning Required Configuration
-You **must** enable `withGlobalTauri` in your `tauri.conf.json` for the MCP bridge to work. This exposes `window.__TAURI__` which the plugin uses to communicate with your app:
+In `src-tauri/tauri.conf.json`, add:
 
 ```json
 {
@@ -67,12 +132,13 @@ You **must** enable `withGlobalTauri` in your `tauri.conf.json` for the MCP brid
 }
 ```
 
-Without this setting, the MCP server will not be able to interact with your application's webview.
+::: warning Required
+Without `withGlobalTauri`, the MCP server cannot communicate with your app's webview.
 :::
 
-### Add Plugin Permissions
+#### 4. Add Plugin Permissions
 
-Add the plugin's permission to your capabilities file (e.g., `src-tauri/capabilities/default.json`):
+Add to `src-tauri/capabilities/default.json`:
 
 ```json
 {
@@ -82,144 +148,68 @@ Add the plugin's permission to your capabilities file (e.g., `src-tauri/capabili
 }
 ```
 
-This grants all permissions required by the MCP server.
+</details>
 
-### Optional: TypeScript Bindings
+</div>
 
-The npm package `@hypothesi/tauri-plugin-mcp-bridge` is **optional**. Install it only if you want to call the plugin from your app's frontend code:
+## 🚀 Start Building!
 
-```bash
-npm install --save-exact @hypothesi/tauri-plugin-mcp-bridge
-```
-
-The MCP server communicates with the Rust plugin directly via WebSocket—no npm package needed.
-
-## Step 2: Configure Your AI Assistant
-
-Use [install-mcp](https://www.npmjs.com/package/install-mcp) to add the server to your AI assistant:
+Run your app and start talking to your AI assistant:
 
 ```bash
-npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
+cargo tauri dev
 ```
 
-Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
+Now try these:
 
-### Using Local Development Build
+> "Take a screenshot of my app"
 
-If you're developing the MCP server itself, you can point to your local build:
+> "Click the submit button"
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+> "Start monitoring IPC calls and show me what's happening"
 
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+> "Find all the input fields in my app"
 
-```json
-{
-  "mcpServers": {
-    "tauri-mcp-server": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-server-tauri/packages/mcp-server/dist/index.js"]
-    }
-  }
-}
-```
+> "Check the console for any JavaScript errors"
 
-Make sure to replace `/absolute/path/to` with the actual path to your installation.
+The AI connects to your running app and can see, click, type, and debug—just like a human tester, but faster.
 
-## Step 3: Verify the Installation
+## More Slash Commands
 
-Restart your AI Assistant and verify that the MCP server is loaded. You can ask:
+| Command | What it does |
+|---------|--------------|
+| `/setup` | Configure the MCP bridge (you just used this!) |
+| `/fix-webview-errors` | Find and fix JavaScript errors automatically |
 
-> "What Tauri tools are available?"
-
-The assistant should list the available MCP tools for Tauri development.
-
-## Step 4: Start Developing
-
-With the MCP server configured and the bridge plugin installed, you can now use your AI assistant to help develop your Tauri app. Start the development server:
-
-> "Start the Tauri development server"
-
-This will launch your application in development mode with hot-reload enabled.
-
-## Step 5: Explore Available Tools
-
-The MCP server provides tools across four categories:
-
-- **Project Management**: Run CLI commands, read/write Tauri configs, access documentation
-- **Mobile Development**: List devices, launch Android AVDs or iOS Simulators
-- **UI Automation & WebView Interaction**: Find elements, take screenshots, interact with the UI, execute JavaScript, read logs
-- **IPC & Plugin Tools**: Execute IPC commands, monitor IPC events, emit test events, inspect backend state
-
-Ask your AI Assistant about specific tasks:
-
-> "Take a screenshot of my app and check if the button is visible"
-
-> "Start IPC monitoring and show me what commands are being called"
-
-> "Launch an iOS Simulator and run my app on it"
-
-## Step 6: Use Slash Commands
-
-In addition to tools, the MCP server provides **slash commands** (prompts) for guided workflows. These are pre-built templates that walk your AI through multi-step tasks.
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `/fix-webview-errors` | Find and fix JavaScript errors in your webview |
-
-### Using Slash Commands
-
-Type the command directly in your AI assistant's chat:
-
-```
-/fix-webview-errors
-```
-
-The AI will then:
-1. Connect to your running Tauri app
-2. Retrieve console logs and errors
-3. Analyze the errors and identify root causes
-4. Help you locate and fix the problematic code
-5. Clean up the session
-
-::: tip When to Use Slash Commands
-Use slash commands when you want a guided, multi-step workflow. They're perfect for debugging sessions and complex tasks that require multiple tools working together.
-:::
-
-See the [Prompts documentation](/api/prompts) for more details.
+See the [Prompts documentation](/api/prompts) for details.
 
 ## Next Steps
 
-Now that you have MCP Server Tauri set up, you can:
-
-1. **Explore the API Reference** to learn about all available tools
-2. **Read the Mobile Development Guide** to build for Android and iOS
-3. **Learn about IPC Monitoring** to debug your application
-4. **Check out Best Practices** for efficient development
+- **[API Reference](/api/)** — Learn about all 16 available tools
+- **[IPC & Plugin Tools](/api/ipc-plugin)** — Debug your app's IPC layer
+- **[UI Automation](/api/ui-automation)** — Automate webview interactions
 
 ## Troubleshooting
 
 ### MCP Server Not Loading
 
-If your AI Assistant doesn't recognize the MCP tools:
+If your AI assistant doesn't recognize the Tauri tools:
 
-1. Verify the path in your configuration is correct
-2. Check that the build completed successfully (or use `npx @hypothesi/tauri-mcp-server` for the published version)
-3. Restart your AI Assistant application
-4. Check the logs for any error messages
+1. Verify the MCP configuration is correct
+2. Restart your AI assistant application
+3. Check for error messages in the assistant's logs
 
-### Build Errors
+### Connection Failed
 
-If you encounter build errors:
+If the AI can't connect to your Tauri app:
 
-1. Ensure all prerequisites are installed
-2. Try cleaning and rebuilding: `npm run clean && npm run build`
-3. Check that you have the correct Node.js version (20+)
-4. Verify Rust and Cargo are properly installed
+1. Make sure your app is running (`cargo tauri dev`)
+2. Verify `withGlobalTauri` is enabled in `tauri.conf.json`
+3. Check that `mcp-bridge:default` permission is added
+4. Look for WebSocket errors in your app's console (port 9223)
 
 ### Need Help?
 
-- Check the [GitHub Issues](https://github.com/hypothesi/mcp-server-tauri/issues)
-- Read the [Tauri Documentation](https://tauri.app)
-- Learn about the [Model Context Protocol](https://modelcontextprotocol.io)
+- [GitHub Issues](https://github.com/hypothesi/mcp-server-tauri/issues)
+- [Tauri Documentation](https://tauri.app)
+- [Model Context Protocol](https://modelcontextprotocol.io)

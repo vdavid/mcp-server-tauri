@@ -25,10 +25,8 @@ A **Model Context Protocol (MCP) server** that enables AI assistants like Claude
 |----------|-------------|
 | 🎯 **UI Automation** | Screenshots, clicks, typing, scrolling, element finding |
 | 🔍 **IPC Monitoring** | Capture and inspect Tauri IPC calls in real-time |
-| 📱 **Mobile Dev** | Manage iOS simulators & Android emulators |
-| 🛠️ **CLI Integration** | Run any Tauri command (`init`, `dev`, `build`, etc.) |
-| ⚙️ **Configuration** | Read/write Tauri config files with validation |
-| 📋 **Logs** | Stream Android logcat, iOS device logs, system logs |
+| 📱 **Mobile Dev** | List iOS simulators & Android emulators |
+| 📋 **Logs** | Stream console, Android logcat, iOS, and system logs |
 
 ---
 
@@ -144,31 +142,30 @@ The server provides **slash commands** for guided, multi-step workflows:
 
 | Command | Description |
 |---------|-------------|
+| `/setup` | Set up the MCP bridge plugin in your Tauri project. Adds the crate, registers the plugin, and configures permissions. |
 | `/fix-webview-errors` | Find and fix JavaScript errors in your webview. Connects to your app, retrieves console errors, analyzes them, and helps you fix the issues. |
 
-Just type the command in your AI assistant to start a guided debugging session.
+Just type the command in your AI assistant to start a guided workflow.
 
 ---
 
-## 🧰 Available Tools
+## 🧰 Available Tools (16 total)
 
 <details>
 <summary><strong>UI Automation</strong> — Screenshots, clicks, typing, and more</summary>
 
 | Tool | Description |
 |------|-------------|
-| `tauri_webview_screenshot` | Capture webview screenshots |
-| `tauri_list_windows` | List all open webview windows |
+| `tauri_driver_session` | Start/stop/status automation session |
 | `tauri_webview_find_element` | Find elements by selector |
-| `tauri_webview_interact` | Click, scroll, swipe, long-press |
+| `tauri_read_logs` | Read console, Android, iOS, or system logs |
+| `tauri_webview_interact` | Click, scroll, swipe, focus, long-press |
+| `tauri_webview_screenshot` | Capture webview screenshots |
 | `tauri_webview_keyboard` | Type text or send key events |
 | `tauri_webview_wait_for` | Wait for elements, text, or events |
 | `tauri_webview_get_styles` | Get computed CSS styles |
 | `tauri_webview_execute_js` | Execute JavaScript in webview |
-| `tauri_webview_focus_element` | Focus on elements |
-| `tauri_driver_get_console_logs` | Get browser console logs |
-| `tauri_read_platform_logs` | Read Android/iOS/system logs |
-| `tauri_driver_session` | Start/stop automation session |
+| `tauri_list_windows` | List all open webview windows |
 
 > **Multi-Window Support**: All webview tools accept an optional `windowId` parameter to target specific windows. Use `tauri_list_windows` to discover available windows.
 
@@ -179,34 +176,20 @@ Just type the command in your AI assistant to start a guided debugging session.
 
 | Tool | Description |
 |------|-------------|
-| `tauri_plugin_execute_ipc` | Execute Tauri IPC commands |
-| `tauri_plugin_get_window_info` | Get window information |
-| `tauri_plugin_get_backend_state` | Get app metadata and state |
-| `tauri_plugin_ipc_monitor` | Start/stop IPC monitoring |
-| `tauri_plugin_ipc_get_events` | Get captured IPC events |
-| `tauri_plugin_emit_event` | Emit custom events |
+| `tauri_ipc_execute_command` | Execute Tauri IPC commands |
+| `tauri_ipc_get_backend_state` | Get app metadata and state |
+| `tauri_ipc_monitor` | Start/stop IPC monitoring |
+| `tauri_ipc_get_captured` | Get captured IPC traffic |
+| `tauri_ipc_emit_event` | Emit custom events |
 
 </details>
 
 <details>
-<summary><strong>Mobile Development</strong> — Emulators and simulators</summary>
+<summary><strong>Mobile Development</strong> — Device listing</summary>
 
 | Tool | Description |
 |------|-------------|
 | `tauri_list_devices` | List Android devices and iOS simulators |
-| `tauri_launch_emulator` | Launch Android AVD or iOS Simulator |
-
-</details>
-
-<details>
-<summary><strong>Project Management</strong> — CLI, config, and docs</summary>
-
-| Tool | Description |
-|------|-------------|
-| `tauri_run_command` | Run any Tauri CLI command |
-| `tauri_read_config` | Read Tauri config files (including platform-specific) |
-| `tauri_write_config` | Write config files with validation |
-| `tauri_get_docs` | Fetch Tauri documentation |
 
 </details>
 

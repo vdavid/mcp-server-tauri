@@ -1,16 +1,34 @@
 import { z } from 'zod';
 import { execa } from 'execa';
+import { getConsoleLogs } from '../driver/webview-interactions.js';
 
 export const ReadLogsSchema = z.object({
-   source: z.enum([ 'android', 'ios', 'system' ]),
+   source: z.enum([ 'console', 'android', 'ios', 'system' ])
+      .describe('Log source: "console" for webview JS logs, "android" for logcat, "ios" for simulator, "system" for desktop'),
    lines: z.number().default(50),
    filter: z.string().optional().describe('Regex or keyword to filter logs'),
    since: z.string().optional().describe('ISO timestamp to filter logs since (e.g. 2023-10-27T10:00:00Z)'),
+   windowId: z.string().optional().describe('Window label for console logs (defaults to "main")'),
 });
 
-export async function readLogs(source: string, lines: number, filter?: string, since?: string): Promise<string> {
+export interface ReadLogsOptions {
+   source: 'console' | 'android' | 'ios' | 'system';
+   lines?: number;
+   filter?: string;
+   since?: string;
+   windowId?: string;
+}
+
+export async function readLogs(options: ReadLogsOptions): Promise<string> {
+   const { source, lines = 50, filter, since, windowId } = options;
+
    try {
       let output = '';
+
+      // Handle console logs (webview JS logs)
+      if (source === 'console') {
+         return await getConsoleLogs({ filter, since, windowId });
+      }
 
       if (source === 'android') {
          const args = [ 'logcat', '-d' ];

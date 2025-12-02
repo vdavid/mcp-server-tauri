@@ -117,46 +117,36 @@ await invoke('plugin:mcp-bridge|emit_event', {
 
 ## MCP Server Integration
 
-This plugin is part of the larger MCP Server for Tauri, which provides **23 total MCP tools** for comprehensive Tauri development and testing. The plugin specifically enables the following tools:
+This plugin is part of the larger MCP Server for Tauri, which provides **16 total MCP tools** for comprehensive Tauri development and testing. The plugin specifically enables the following tools:
 
-### Project Management Tools (4)
-
-1. **tauri_run_command** - Run any Tauri CLI command with full flexibility
-2. **tauri_read_config** - Read Tauri configuration files (including platform-specific configs)
-3. **tauri_write_config** - Write to Tauri configuration files with validation
-4. **tauri_get_docs** - Get Tauri documentation (LLM Cheat Sheet) for the detected project version
-
-### Mobile Development Tools (2)
+### Mobile Development Tools (1)
 
 1. **tauri_list_devices** - List connected Android devices and iOS simulators
-2. **tauri_launch_emulator** - Launch an Android AVD or iOS Simulator
 
-### UI Automation & WebView Tools (11)
+### UI Automation & WebView Tools (10)
 
 Tools for UI automation and webview interaction via the plugin's WebSocket connection:
 
-1. **tauri_driver_session** - Manage automation session (start or stop)
-2. **tauri_webview_find_element** - Find an element in the webview
-3. **tauri_driver_get_console_logs** - Get console logs from the webview
-4. **tauri_read_platform_logs** - Read platform logs (Android logcat, iOS device logs, system logs)
-5. **tauri_webview_interact** - Perform gestures (click, double-click, long-press, swipe, scroll)
+1. **tauri_driver_session** - Manage automation session (start, stop, or status)
+2. **tauri_list_windows** - List all webview windows with details
+3. **tauri_webview_find_element** - Find an element in the webview
+4. **tauri_read_logs** - Read logs (console, Android logcat, iOS, system)
+5. **tauri_webview_interact** - Perform gestures (click, double-click, long-press, swipe, scroll, focus)
 6. **tauri_webview_screenshot** - Take screenshots of the entire webview
 7. **tauri_webview_keyboard** - Type text or simulate keyboard events with optional modifiers
 8. **tauri_webview_wait_for** - Wait for element selectors, text content, or IPC events
 9. **tauri_webview_get_styles** - Get computed CSS styles for element(s)
 10. **tauri_webview_execute_js** - Execute arbitrary JavaScript code in the webview context
-11. **tauri_webview_focus_element** - Focus on a specific element in the webview
 
-### IPC & Plugin Tools (6)
+### IPC Tools (5)
 
 Tools that directly use the MCP Bridge plugin's Rust backend:
 
-1. **tauri_plugin_execute_ipc** - Execute any Tauri IPC command with the MCP bridge plugin
-2. **tauri_plugin_get_window_info** - Get detailed information about the current window
-3. **tauri_plugin_ipc_monitor** - Manage IPC monitoring (start or stop)
-4. **tauri_plugin_ipc_get_events** - Retrieve all captured IPC events with optional filtering
-5. **tauri_plugin_emit_event** - Emit custom Tauri events for testing event handlers
-6. **tauri_plugin_get_backend_state** - Get backend application state and metadata
+1. **tauri_ipc_execute_command** - Execute any Tauri IPC command
+2. **tauri_ipc_monitor** - Manage IPC monitoring (start or stop)
+3. **tauri_ipc_get_captured** - Retrieve captured IPC traffic with optional filtering
+4. **tauri_ipc_emit_event** - Emit custom Tauri events for testing event handlers
+5. **tauri_ipc_get_backend_state** - Get backend application state and metadata
 
 ## Architecture
 

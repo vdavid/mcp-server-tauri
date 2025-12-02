@@ -14,8 +14,7 @@ const analyticsHead: HeadConfig[] = isProd
    : [];
 
 const siteDescription =
-   'An MCP server that provides AI assistants with tools to interact with ' +
-   'Tauri applications for development, testing, and debugging';
+   'An MCP server that empowers AI assistants to build, test, and debug Tauri applications.';
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -91,10 +90,10 @@ export default defineConfig({
                items: [
                   { text: 'Overview', link: '/api/' },
                   { text: 'Prompts (Slash Commands)', link: '/api/prompts' },
-                  { text: 'Project Management', link: '/api/project-management' },
+                  { text: 'Mobile Development', link: '/api/mobile-development' },
                   { text: 'UI Automation', link: '/api/ui-automation' },
                   { text: 'WebView Interaction', link: '/api/webview-interaction' },
-                  { text: 'IPC Plugin', link: '/api/ipc-plugin' },
+                  { text: 'IPC & Plugin', link: '/api/ipc-plugin' },
                ],
             },
          ],

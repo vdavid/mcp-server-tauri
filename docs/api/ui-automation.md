@@ -79,9 +79,15 @@ Manage UI automation session lifecycle. Initializes console log capture and prep
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `action` | string | Yes | Action to perform: 'start' or 'stop' |
+| `action` | string | Yes | Action to perform: 'start', 'stop', or 'status' |
 | `host` | string | No | Host address to connect to (e.g., '192.168.1.100'). Falls back to `MCP_BRIDGE_HOST` or `TAURI_DEV_HOST` env vars |
 | `port` | number | No | Port to connect to (default: 9223) |
+
+### Actions
+
+- **`start`** - Start a new session, connecting to the Tauri app
+- **`stop`** - Stop the current session and disconnect
+- **`status`** - Check current connection status without changing state
 
 ### Connection Strategy
 
@@ -114,12 +120,29 @@ When starting a session, the tool uses the following connection strategy:
   "action": "start",
   "port": 9225
 }
+
+// Check connection status
+{
+  "tool": "tauri_driver_session",
+  "action": "status"
+}
 ```
 
 ### Response
 
+**Start/Stop:**
 ```
 Session started with app: My App (localhost:9223)
+```
+
+**Status:**
+```json
+{
+  "connected": true,
+  "app": "My App",
+  "host": "localhost",
+  "port": 9223
+}
 ```
 
 ### Environment Variables
@@ -174,56 +197,46 @@ Find UI elements using CSS, XPath, or text selectors.
 
 Returns element information including tag name, text content, and attributes.
 
-## tauri_driver_get_console_logs
+## tauri_read_logs
 
-Retrieve console logs from the application's webview using the built-in console capture system.
-
-### Parameters
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `filter` | string | No | Regex pattern to filter log messages |
-| `since` | string | No | ISO timestamp to filter logs after this time |
-| `windowId` | string | No | Window label to target (defaults to 'main') |
-
-### Example
-
-```javascript
-// Get all console logs
-{
-  "tool": "tauri_driver_get_console_logs"
-}
-
-// Get logs matching a pattern
-{
-  "tool": "tauri_driver_get_console_logs",
-  "filter": "error|warning"
-}
-```
-
-### Response
-
-Returns captured console logs with timestamps and log levels.
-
-## tauri_read_platform_logs
-
-Read platform logs from Android devices (logcat), iOS simulators, or desktop system logs. This is distinct from `tauri_driver_get_console_logs` which retrieves JavaScript console logs from the webview.
+Read logs from various sources: webview console logs, Android logcat, iOS simulator logs, or desktop system logs.
 
 ### Parameters
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `source` | string | Yes | Log source: 'android', 'ios', 'system' |
+| `source` | string | Yes | Log source: 'console', 'android', 'ios', 'system' |
 | `lines` | number | No | Number of log lines to retrieve (default: 50) |
 | `filter` | string | No | Regex or keyword to filter logs |
 | `since` | string | No | ISO timestamp to filter logs since |
+| `windowId` | string | No | Window label for console logs (defaults to 'main') |
+
+### Sources
+
+- **`console`** - JavaScript console logs from the webview (requires active session)
+- **`android`** - Android logcat output
+- **`ios`** - iOS simulator logs
+- **`system`** - Desktop system logs (macOS/Linux)
 
 ### Example
 
 ```javascript
+// Get webview console logs
+{
+  "tool": "tauri_read_logs",
+  "source": "console"
+}
+
+// Get console logs matching a pattern
+{
+  "tool": "tauri_read_logs",
+  "source": "console",
+  "filter": "error|warning"
+}
+
 // Read Android logcat
 {
-  "tool": "tauri_read_platform_logs",
+  "tool": "tauri_read_logs",
   "source": "android",
   "filter": "com.myapp",
   "lines": 100
@@ -231,7 +244,7 @@ Read platform logs from Android devices (logcat), iOS simulators, or desktop sys
 
 // Read system logs
 {
-  "tool": "tauri_read_platform_logs",
+  "tool": "tauri_read_logs",
   "source": "system",
   "lines": 50
 }
@@ -239,4 +252,4 @@ Read platform logs from Android devices (logcat), iOS simulators, or desktop sys
 
 ### Response
 
-Returns log entries from the specified source.
+Returns log entries from the specified source with timestamps and log levels.

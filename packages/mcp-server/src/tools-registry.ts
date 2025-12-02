@@ -4,29 +4,26 @@
  */
 
 import { z } from 'zod';
-import { runTauriCommand, RunCommandSchema } from './manager/cli.js';
-import { readConfig, writeConfig, ReadConfigSchema, WriteConfigSchema } from './manager/config.js';
-import { listDevices, launchEmulator, ListDevicesSchema, LaunchEmulatorSchema } from './manager/mobile.js';
+import { listDevices, ListDevicesSchema } from './manager/mobile.js';
 import {
    manageDriverSession,
    ManageDriverSessionSchema,
 } from './driver/session-manager.js';
 import { readLogs, ReadLogsSchema } from './monitor/logs.js';
-import { getDocs, GetDocsSchema } from './manager/docs.js';
 import {
-   executeIPCCommand, getWindowInfo,
+   executeIPCCommand,
    manageIPCMonitoring, getIPCEvents, emitTestEvent, getBackendState,
    listWindows,
-   ExecuteIPCCommandSchema, GetWindowInfoSchema,
+   ExecuteIPCCommandSchema,
    ManageIPCMonitoringSchema, GetIPCEventsSchema, EmitTestEventSchema,
    GetBackendStateSchema, ListWindowsSchema,
 } from './driver/plugin-commands.js';
 import {
    interact, screenshot, keyboard, waitFor, getStyles,
-   executeJavaScript, focusElement, findElement, getConsoleLogs,
+   executeJavaScript, findElement,
    InteractSchema, ScreenshotSchema, KeyboardSchema,
    WaitForSchema, GetStylesSchema, ExecuteJavaScriptSchema,
-   FocusElementSchema, FindElementSchema, GetConsoleLogsSchema,
+   FindElementSchema,
 } from './driver/webview-interactions.js';
 
 /**
@@ -87,7 +84,6 @@ export interface ToolDefinition {
  * Tool categories for organization
  */
 export const TOOL_CATEGORIES = {
-   PROJECT_MANAGEMENT: 'Project Management',
    MOBILE_DEVELOPMENT: 'Mobile Development',
    UI_AUTOMATION: 'UI Automation & WebView Interaction',
    IPC_PLUGIN: 'IPC & Plugin Tools (via MCP Bridge)',
@@ -98,96 +94,6 @@ export const TOOL_CATEGORIES = {
  * This is the single source of truth for tool definitions
  */
 export const TOOLS: ToolDefinition[] = [
-   // Project Management Tools
-   {
-      name: 'tauri_run_command',
-      description:
-         '[Tauri Desktop/Mobile Apps Only] Run Tauri CLI commands (dev, build, init, etc.). ' +
-         'Use ONLY for projects with a src-tauri/ directory and tauri.conf.json. ' +
-         'Do NOT use for regular web apps, Electron apps, or browser-based projects. ' +
-         'Check for tauri.conf.json before using this tool.',
-      category: TOOL_CATEGORIES.PROJECT_MANAGEMENT,
-      schema: RunCommandSchema,
-      annotations: {
-         title: 'Run Tauri CLI Command',
-         readOnlyHint: false,
-         destructiveHint: false,
-         idempotentHint: false,
-         openWorldHint: false,
-      },
-      handler: async (args) => {
-         const parsed = RunCommandSchema.parse(args);
-
-         return await runTauriCommand(
-            parsed.command,
-            parsed.cwd,
-            parsed.args || [],
-            parsed.timeout
-         );
-      },
-   },
-
-   {
-      name: 'tauri_read_config',
-      description:
-         '[Tauri Desktop/Mobile Apps Only] Read tauri.conf.json or platform-specific configs. ' +
-         'Use ONLY for Tauri v2 projects (look for src-tauri/ directory). ' +
-         'For regular web apps or Electron, use standard file reading tools instead.',
-      category: TOOL_CATEGORIES.PROJECT_MANAGEMENT,
-      schema: ReadConfigSchema,
-      annotations: {
-         title: 'Read Tauri Config',
-         readOnlyHint: true,
-         openWorldHint: false,
-      },
-      handler: async (args) => {
-         const parsed = ReadConfigSchema.parse(args);
-
-         return await readConfig(parsed.projectPath, parsed.file);
-      },
-   },
-
-   {
-      name: 'tauri_write_config',
-      description:
-         '[Tauri Desktop/Mobile Apps Only] Modify tauri.conf.json with validation. ' +
-         'Use ONLY for Tauri v2 projects. Validates JSON structure before writing. ' +
-         'For other frameworks, use standard file editing tools.',
-      category: TOOL_CATEGORIES.PROJECT_MANAGEMENT,
-      schema: WriteConfigSchema,
-      annotations: {
-         title: 'Write Tauri Config',
-         readOnlyHint: false,
-         destructiveHint: true,
-         openWorldHint: false,
-      },
-      handler: async (args) => {
-         const parsed = WriteConfigSchema.parse(args);
-
-         return await writeConfig(parsed.projectPath, parsed.file, parsed.content);
-      },
-   },
-
-   {
-      name: 'tauri_get_docs',
-      description:
-         '[Tauri Desktop/Mobile Apps Only] Fetch Tauri v2 documentation and API reference. ' +
-         'Use when working on Tauri projects and need framework-specific guidance. ' +
-         'Not useful for Electron, React Native, or web-only projects.',
-      category: TOOL_CATEGORIES.PROJECT_MANAGEMENT,
-      schema: GetDocsSchema,
-      annotations: {
-         title: 'Get Tauri Documentation',
-         readOnlyHint: true,
-         openWorldHint: true,
-      },
-      handler: async (args) => {
-         const parsed = GetDocsSchema.parse(args);
-
-         return await getDocs(parsed.projectPath);
-      },
-   },
-
    // Mobile Development Tools
    {
       name: 'tauri_list_devices',
@@ -209,32 +115,12 @@ export const TOOLS: ToolDefinition[] = [
       },
    },
 
-   {
-      name: 'tauri_launch_emulator',
-      description:
-         '[Tauri Mobile Apps Only] Launch Android AVD or iOS Simulator for Tauri mobile testing. ' +
-         'Use when developing Tauri apps for mobile platforms. ' +
-         'Not applicable for desktop-only apps or web projects.',
-      category: TOOL_CATEGORIES.MOBILE_DEVELOPMENT,
-      schema: LaunchEmulatorSchema,
-      annotations: {
-         title: 'Launch Mobile Emulator',
-         readOnlyHint: false,
-         destructiveHint: false,
-         openWorldHint: false,
-      },
-      handler: async (args) => {
-         const parsed = LaunchEmulatorSchema.parse(args);
-
-         return await launchEmulator(parsed.platform, parsed.name);
-      },
-   },
-
    // UI Automation Tools
    {
       name: 'tauri_driver_session',
       description:
          '[Tauri Apps Only] Start/stop automation session to connect to a RUNNING Tauri app. ' +
+         'Use action "status" to check current connection state. ' +
          'REQUIRED before using other tauri_webview_* or tauri_plugin_* tools. ' +
          'Connects via WebSocket to the MCP Bridge plugin in the Tauri app. ' +
          'For browser automation, use Chrome DevTools MCP instead. ' +
@@ -280,46 +166,23 @@ export const TOOLS: ToolDefinition[] = [
    },
 
    {
-      name: 'tauri_driver_get_console_logs',
+      name: 'tauri_read_logs',
       description:
-         '[Tauri Apps Only] Get JavaScript console logs from a running Tauri app. ' +
-         'Requires active tauri_driver_session. Use for debugging Tauri webview issues. ' +
-         'For browser console logs, use Chrome DevTools MCP instead.',
-      category: TOOL_CATEGORIES.UI_AUTOMATION,
-      schema: GetConsoleLogsSchema,
-      annotations: {
-         title: 'Get Tauri Console Logs',
-         readOnlyHint: true,
-         openWorldHint: false,
-      },
-      handler: async (args) => {
-         const parsed = GetConsoleLogsSchema.parse(args);
-
-         return await getConsoleLogs({
-            filter: parsed.filter,
-            since: parsed.since,
-            windowId: parsed.windowId,
-         });
-      },
-   },
-
-   {
-      name: 'tauri_read_platform_logs',
-      description:
-         '[Tauri Mobile Apps] Read Android logcat or iOS device logs for Tauri mobile apps. ' +
-         'Also reads system logs on desktop. ' +
-         'Use for debugging native/platform-level issues in Tauri apps.',
+         '[Tauri Apps Only] Read logs from various sources: "console" for webview JS logs, ' +
+         '"android" for logcat, "ios" for simulator logs, "system" for desktop logs. ' +
+         'Requires active tauri_driver_session for console logs. ' +
+         'Use for debugging Tauri app issues at any level.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
       schema: ReadLogsSchema,
       annotations: {
-         title: 'Read Platform Logs',
+         title: 'Read Logs',
          readOnlyHint: true,
          openWorldHint: false,
       },
       handler: async (args) => {
          const parsed = ReadLogsSchema.parse(args);
 
-         return await readLogs(parsed.source, parsed.lines, parsed.filter, parsed.since);
+         return await readLogs(parsed);
       },
    },
 
@@ -327,7 +190,8 @@ export const TOOLS: ToolDefinition[] = [
    {
       name: 'tauri_webview_interact',
       description:
-         '[Tauri Apps Only] Click, scroll, swipe, or perform gestures in a Tauri app webview. ' +
+         '[Tauri Apps Only] Click, scroll, swipe, focus, or perform gestures in a Tauri app webview. ' +
+         'Supported actions: click, double-click, long-press, scroll, swipe, focus. ' +
          'Requires active tauri_driver_session. ' +
          'For browser interaction, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
@@ -482,30 +346,9 @@ export const TOOLS: ToolDefinition[] = [
       },
    },
 
-   {
-      name: 'tauri_webview_focus_element',
-      description:
-         '[Tauri Apps Only] Focus a DOM element in a Tauri app\'s webview. ' +
-         'Requires active tauri_driver_session. ' +
-         'For browser focus, use Chrome DevTools MCP instead.',
-      category: TOOL_CATEGORIES.UI_AUTOMATION,
-      schema: FocusElementSchema,
-      annotations: {
-         title: 'Focus Element in Tauri',
-         readOnlyHint: false,
-         destructiveHint: false,
-         openWorldHint: false,
-      },
-      handler: async (args) => {
-         const parsed = FocusElementSchema.parse(args);
-
-         return await focusElement({ selector: parsed.selector, windowId: parsed.windowId });
-      },
-   },
-
    // IPC & Plugin Tools
    {
-      name: 'tauri_plugin_execute_ipc',
+      name: 'tauri_ipc_execute_command',
       description:
          '[Tauri Apps Only] Execute Tauri IPC commands (invoke Rust backend functions). ' +
          'Requires active tauri_driver_session. This is Tauri-specific IPC, not browser APIs. ' +
@@ -526,25 +369,7 @@ export const TOOLS: ToolDefinition[] = [
    },
 
    {
-      name: 'tauri_plugin_get_window_info',
-      description:
-         '[Tauri Apps Only] Get Tauri window information (size, position, state). ' +
-         'Requires active tauri_driver_session. ' +
-         'For browser window info, use Chrome DevTools MCP instead.',
-      category: TOOL_CATEGORIES.IPC_PLUGIN,
-      schema: GetWindowInfoSchema,
-      annotations: {
-         title: 'Get Tauri Window Info',
-         readOnlyHint: true,
-         openWorldHint: false,
-      },
-      handler: async () => {
-         return await getWindowInfo();
-      },
-   },
-
-   {
-      name: 'tauri_plugin_ipc_monitor',
+      name: 'tauri_ipc_monitor',
       description:
          '[Tauri Apps Only] Monitor Tauri IPC calls between frontend and Rust backend. ' +
          'Requires active tauri_driver_session. Captures invoke() calls and responses. ' +
@@ -566,15 +391,15 @@ export const TOOLS: ToolDefinition[] = [
    },
 
    {
-      name: 'tauri_plugin_ipc_get_events',
+      name: 'tauri_ipc_get_captured',
       description:
-         '[Tauri Apps Only] Get captured Tauri IPC events (requires ipc_monitor started). ' +
-         'Shows Tauri command invocations with arguments and responses. ' +
+         '[Tauri Apps Only] Get captured Tauri IPC traffic (requires ipc_monitor started). ' +
+         'Shows captured commands (invoke calls) and events with arguments and responses. ' +
          'For browser network requests, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.IPC_PLUGIN,
       schema: GetIPCEventsSchema,
       annotations: {
-         title: 'Get Tauri IPC Events',
+         title: 'Get Captured IPC Traffic',
          readOnlyHint: true,
          openWorldHint: false,
       },
@@ -586,7 +411,7 @@ export const TOOLS: ToolDefinition[] = [
    },
 
    {
-      name: 'tauri_plugin_emit_event',
+      name: 'tauri_ipc_emit_event',
       description:
          '[Tauri Apps Only] Emit a Tauri event to test event handlers. ' +
          'Requires active tauri_driver_session. Events are Tauri-specific (not DOM events). ' +
@@ -607,7 +432,7 @@ export const TOOLS: ToolDefinition[] = [
    },
 
    {
-      name: 'tauri_plugin_get_backend_state',
+      name: 'tauri_ipc_get_backend_state',
       description:
          '[Tauri Apps Only] Get Tauri backend state: app metadata, Tauri version, environment. ' +
          'Requires active tauri_driver_session. ' +
@@ -628,7 +453,8 @@ export const TOOLS: ToolDefinition[] = [
    {
       name: 'tauri_list_windows',
       description:
-         '[Tauri Apps Only] List all Tauri webview windows (labels, titles, URLs, state). ' +
+         '[Tauri Apps Only] List all Tauri webview windows with details including ' +
+         'labels, titles, URLs, and state (focused, visible, isMain). ' +
          'Requires active tauri_driver_session. Use to discover windows before targeting them. ' +
          'For browser tabs/windows, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,

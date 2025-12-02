@@ -25,7 +25,7 @@ export const WindowTargetSchema = z.object({
 // ============================================================================
 
 export const InteractSchema = WindowTargetSchema.extend({
-   action: z.enum([ 'click', 'double-click', 'long-press', 'scroll', 'swipe' ])
+   action: z.enum([ 'click', 'double-click', 'long-press', 'scroll', 'swipe', 'focus' ])
       .describe('Type of interaction to perform'),
    selector: z.string().optional().describe('CSS selector for the element to interact with'),
    x: z.number().optional().describe('X coordinate for direct coordinate interaction'),
@@ -109,6 +109,14 @@ export async function interact(options: {
    // Handle swipe action separately since it has different logic
    if (action === 'swipe') {
       return performSwipe({ fromX, fromY, toX, toY, duration, windowId });
+   }
+
+   // Handle focus action
+   if (action === 'focus') {
+      if (!selector) {
+         throw new Error('Focus action requires a selector');
+      }
+      return focusElement({ selector, windowId });
    }
 
    const script = buildScript(SCRIPTS.interact, {

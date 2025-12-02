@@ -30,26 +30,6 @@ export async function executeIPCCommand(command: string, args: unknown = {}): Pr
    }
 }
 
-export const GetWindowInfoSchema = z.object({});
-
-export async function getWindowInfo(): Promise<string> {
-   try {
-      const result = await executeIPCCommand('plugin:mcp-bridge|get_window_info');
-
-      const parsed = JSON.parse(result);
-
-      if (!parsed.success) {
-         throw new Error(parsed.error || 'Unknown error');
-      }
-
-      return JSON.stringify(parsed.result);
-   } catch(error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      throw new Error(`Failed to get window info: ${message}`);
-   }
-}
-
 // Combined schema for managing IPC monitoring
 export const ManageIPCMonitoringSchema = z.object({
    action: z.enum([ 'start', 'stop' ]).describe('Action to perform: start or stop IPC monitoring'),

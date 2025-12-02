@@ -8,7 +8,7 @@ head:
 ---
 
 <script setup>
-import { MessageSquareCode, Bug, Zap } from 'lucide-vue-next';
+import { MessageSquareCode, Bug, Zap, Settings } from 'lucide-vue-next';
 </script>
 
 # <MessageSquareCode :size="28" :stroke-width="2" class="heading-icon" /> Prompts (Slash Commands)
@@ -24,6 +24,31 @@ Use prompts when you want a guided, multi-step workflow rather than a single act
 :::
 
 ## Available Prompts
+
+### <Settings :size="20" :stroke-width="2" class="heading-icon" /> setup
+
+**Slash command:** `/setup`
+
+Guides you through setting up the MCP Bridge plugin in a Tauri project. This prompt instructs the AI to make all necessary changes to your project:
+
+1. **Adds** the Rust crate to `src-tauri/Cargo.toml`
+2. **Registers** the plugin in your app's entry point (`lib.rs` or `main.rs`)
+3. **Enables** `withGlobalTauri` in `tauri.conf.json`
+4. **Adds** the required permissions to your capabilities file
+
+**Example usage:**
+
+```
+/setup
+```
+
+The AI will examine your project structure and make the necessary changes. It will also verify the setup is correct and provide troubleshooting guidance if needed.
+
+::: tip When to Use
+Use this prompt when you're adding the MCP bridge to a new Tauri project, or when you're not sure if your existing setup is correct.
+:::
+
+---
 
 ### <Bug :size="20" :stroke-width="2" class="heading-icon" /> fix-webview-errors
 
@@ -59,7 +84,7 @@ The AI will then:
 | Step | Tool Used | Purpose |
 |------|-----------|---------|
 | 1 | `tauri_driver_session` | Connect to the running app |
-| 2 | `tauri_driver_get_console_logs` | Retrieve JS errors and warnings |
+| 2 | `tauri_read_logs` | Retrieve JS errors and warnings |
 | 3 | Code search tools | Find source code locations |
 | 4 | `tauri_driver_session` | Clean up connection |
 
@@ -86,6 +111,7 @@ This achieves the same result as `/fix-webview-errors` but gives you more contro
 
 | Use Case | Prompt | Tool |
 |----------|--------|------|
+| Set up MCP bridge in a project | `/setup` | - |
 | Debug JS errors in webview | `/fix-webview-errors` | - |
 | Take a single screenshot | - | `tauri_webview_screenshot` |
 | Multi-step testing workflow | Ask AI to create one | - |

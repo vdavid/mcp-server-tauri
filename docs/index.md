@@ -2,7 +2,7 @@
 layout: home
 title: MCP Server Tauri - AI-Powered Tauri Development Tools
 titleTemplate: false
-description: An MCP server that provides AI assistants with tools to interact with Tauri applications for development, testing, and debugging.
+description: An MCP server that empowers AI assistants to build, test, and debug Tauri applications.
 head:
   - - meta
     - name: keywords
@@ -11,7 +11,7 @@ head:
 hero:
   name: MCP Server
   text: for Tauri
-  tagline: An MCP server that provides AI assistants with tools to interact with Tauri applications during development.
+  tagline: An MCP server that empowers AI assistants to build, test, and debug Tauri applications.
   actions:
     - theme: brand
       text: Get Started
@@ -31,8 +31,8 @@ import { data as versions } from './.vitepress/versions.data';
   <div class="features-grid">
     <Feature icon="camera" title="Visual Context" details="Capture and analyze screenshots to understand UI state and help with visual debugging" />
     <Feature icon="bug" title="Live Debugging" details="Access console logs, window state, and system logs in real-time" />
-    <Feature icon="terminal" title="Tauri CLI Commands" details="Execute Tauri CLI commands like build, dev, and init through the AI assistant" />
-    <Feature icon="smartphone" title="Device Management" details="List and launch Android emulators and iOS simulators for mobile testing" />
+    <Feature icon="activity" title="IPC Monitoring" details="Capture and inspect Tauri IPC calls between frontend and backend in real-time" />
+    <Feature icon="smartphone" title="Device Management" details="List Android emulators and iOS simulators for mobile testing" />
     <Feature icon="mouse-pointer" title="WebView Automation" details="Click, type, scroll, find elements, and verify UI state in your app's webview" />
     <Feature icon="plug" title="Plugin Bridge" details="Execute IPC commands and interact with the Tauri plugin system" />
   </div>
@@ -44,7 +44,7 @@ This is an unofficial community project, independently developed to enhance [Tau
 
 ## What Is This?
 
-**MCP Server for [Tauri](https://tauri.app)** bridges AI assistants with your Tauri development environment via the Model Context Protocol. Control your entire dev workflow through natural language - run commands, edit configs, test UI, and debug issues.
+**MCP Server for [Tauri](https://tauri.app)** bridges AI assistants with your Tauri development environment via the Model Context Protocol. Control your entire dev workflow through natural language - test UI, debug issues, monitor IPC calls, and inspect your app's state.
 
 ## Quick Start
 
@@ -147,32 +147,32 @@ The server provides **slash commands** for guided workflows:
 <div class="tool-categories">
    <div class="tool-category">
       <MessageSquareCode :size="20" :stroke-width="2" class="category-icon" />
+      <strong>/setup</strong> - Set up the MCP bridge plugin in your Tauri project
+   </div>
+   <div class="tool-category">
+      <MessageSquareCode :size="20" :stroke-width="2" class="category-icon" />
       <strong>/fix-webview-errors</strong> - Find and fix JavaScript errors in your webview
    </div>
 </div>
 
 [Learn more about prompts →](/api/prompts)
 
-## 23 Powerful Tools
+## 16 Powerful Tools
 
-The server exposes tools across 4 categories:
+The server exposes tools across 3 categories:
 
 <div class="tool-categories">
    <div class="tool-category">
       <Target :size="20" :stroke-width="2" class="category-icon" />
-      <strong>UI Automation & WebView</strong> (11 tools) - Gestures, screenshots, JS execution, element finding
+      <strong>UI Automation & WebView</strong> (10 tools) - Gestures, screenshots, JS execution, element finding, logs
    </div>
    <div class="tool-category">
       <Zap :size="20" :stroke-width="2" class="category-icon" />
-      <strong>IPC & Plugins</strong> (6 tools) - IPC commands, monitoring, events
+      <strong>IPC Tools</strong> (5 tools) - IPC commands, monitoring, events
    </div>
    <div class="tool-category">
       <Smartphone :size="20" :stroke-width="2" class="category-icon" />
-      <strong>Mobile Development</strong> (2 tools) - Device listing, emulator launch
-   </div>
-   <div class="tool-category">
-      <Wrench :size="20" :stroke-width="2" class="category-icon" />
-      <strong>Project Management</strong> (4 tools) - CLI commands, config management
+      <strong>Mobile Development</strong> (1 tool) - Device listing
    </div>
 </div>
 

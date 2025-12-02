@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { getDefaultHost, getDefaultPort } from '../config.js';
 import { AppDiscovery } from './app-discovery.js';
-import { resetPluginClient } from './plugin-client.js';
+import { resetPluginClient, getPluginClient } from './plugin-client.js';
 import { resetInitialization } from './webview-executor.js';
 
 /**
@@ -22,7 +22,7 @@ import { resetInitialization } from './webview-executor.js';
 // ============================================================================
 
 export const ManageDriverSessionSchema = z.object({
-   action: z.enum([ 'start', 'stop' ]).describe('Action to perform: start or stop the session'),
+   action: z.enum([ 'start', 'stop', 'status' ]).describe('Action to perform: start or stop the session, or check status'),
    host: z.string().optional().describe(
       'Host address to connect to (e.g., 192.168.1.100). Falls back to MCP_BRIDGE_HOST or TAURI_DEV_HOST env vars'
    ),
@@ -34,7 +34,9 @@ export const ManageDriverSessionSchema = z.object({
 // ============================================================================
 
 // AppDiscovery instance - recreated when host changes
-let appDiscovery: AppDiscovery | null = null;
+// Track current session info
+let appDiscovery: AppDiscovery | null = null,
+    currentSession: { name: string; host: string; port: number } | null = null;
 
 function getAppDiscovery(host: string): AppDiscovery {
    if (!appDiscovery || appDiscovery.host !== host) {
@@ -78,10 +80,30 @@ async function tryConnect(host: string, port: number): Promise<{ name: string; h
  * @param port - Optional port number (defaults to 9223)
  */
 export async function manageDriverSession(
-   action: 'start' | 'stop',
+   action: 'start' | 'stop' | 'status',
    host?: string,
    port?: number
 ): Promise<string> {
+   // Handle status action
+   if (action === 'status') {
+      const client = getPluginClient();
+
+      if (client.isConnected() && currentSession) {
+         return JSON.stringify({
+            connected: true,
+            app: currentSession.name,
+            host: currentSession.host,
+            port: currentSession.port,
+         });
+      }
+      return JSON.stringify({
+         connected: false,
+         app: null,
+         host: null,
+         port: null,
+      });
+   }
+
    if (action === 'start') {
       // Reset any existing plugin client to ensure fresh connection
       resetPluginClient();
@@ -95,6 +117,7 @@ export async function manageDriverSession(
          try {
             const session = await tryConnect('localhost', configuredPort);
 
+            currentSession = session;
             return `Session started with app: ${session.name} (localhost:${session.port})`;
          } catch{
             // Localhost failed, will try configured host next
@@ -105,6 +128,7 @@ export async function manageDriverSession(
       try {
          const session = await tryConnect(configuredHost, configuredPort);
 
+         currentSession = session;
          return `Session started with app: ${session.name} (${session.host}:${session.port})`;
       } catch{
          // Configured host failed
@@ -123,6 +147,7 @@ export async function manageDriverSession(
 
             const session = await tryConnect('localhost', firstApp.port);
 
+            currentSession = session;
             return `Session started with app: ${session.name} (localhost:${session.port})`;
          } catch{
             // Discovery found app but connection failed
@@ -135,9 +160,11 @@ export async function manageDriverSession(
 
          const session = await tryConnect(configuredHost, configuredPort);
 
+         currentSession = session;
          return `Session started with app: ${session.name} (${session.host}:${session.port})`;
       } catch{
          // All attempts failed
+         currentSession = null;
          return `Session started (native IPC mode - no Tauri app found at localhost or ${configuredHost}:${configuredPort})`;
       }
    }
@@ -149,6 +176,7 @@ export async function manageDriverSession(
 
    resetPluginClient();
    resetInitialization();
+   currentSession = null;
 
    return 'Session stopped';
 }
