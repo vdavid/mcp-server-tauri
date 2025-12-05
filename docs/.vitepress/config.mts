@@ -51,8 +51,9 @@ export default defineConfig({
                'desktop app, mobile app, ui automation, testing',
          },
       ],
-      [ 'meta', { name: 'author', content: 'Hypothesi' } ],
+      [ 'meta', { name: 'author', content: 'Matt Luedke' } ],
       [ 'meta', { name: 'robots', content: 'index, follow' } ],
+      [ 'meta', { name: 'google-site-verification', content: 'VR-dhovCapAjsitFgJbSdpQedE7sYtSptP9Uf_eNBwY' } ],
       [ 'link', { rel: 'canonical', href: siteUrl } ],
       // Analytics (production only)
       ...analyticsHead,
