@@ -52,6 +52,40 @@ npx -y install-mcp @hypothesi/tauri-mcp-server --client claude-code
 
 Supported clients: `claude-code`, `cursor`, `windsurf`, `vscode`, `cline`, `roo-cline`, `claude`, `zed`, `goose`, `warp`, `codex`
 
+## Multi-App Support
+
+The MCP server supports connecting to multiple Tauri apps simultaneously. Each app runs on a unique port, and the most recently connected app becomes the "default" app.
+
+**Key Features:**
+- Connect to multiple apps on different ports
+- Default app used when no `appIdentifier` specified
+- Target specific apps using port number or bundle ID
+- Stop individual sessions or all sessions at once
+
+**Example Usage:**
+```javascript
+// Connect to first app
+await tauri_driver_session({ action: "start", port: 9223 })
+
+// Connect to second app
+await tauri_driver_session({ action: "start", port: 9224 })
+
+// Check status - shows both apps with default indicator
+await tauri_driver_session({ action: "status" })
+
+// Use default app (most recent - port 9224)
+await tauri_webview_screenshot()
+
+// Target specific app by port
+await tauri_webview_screenshot({ appIdentifier: 9223 })
+
+// Stop specific app
+await tauri_driver_session({ action: "stop", appIdentifier: 9223 })
+
+// Stop all apps
+await tauri_driver_session({ action: "stop" })
+```
+
 ## Available Tools (16 total)
 
 ### UI Automation

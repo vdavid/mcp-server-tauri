@@ -27,6 +27,12 @@ import {
 } from './driver/webview-interactions.js';
 
 /**
+ * Standard multi-app description for webview tools.
+ */
+const MULTI_APP_DESC = 'Targets the only connected app, or the default app if multiple are connected. ' +
+   'Specify appIdentifier (port or bundle ID) to target a specific app.';
+
+/**
  * Content types that tools can return.
  * Text content is the default, image content is used for screenshots.
  */
@@ -216,11 +222,12 @@ export const TOOLS: ToolDefinition[] = [
       name: 'tauri_driver_session',
       description:
          '[Tauri Apps Only] Start/stop automation session to connect to a RUNNING Tauri app. ' +
-         'Use action "status" to check current connection state and get the app identifier. ' +
-         'The status response includes an "identifier" field (e.g., "com.example.myapp") that uniquely identifies the connected app. ' +
-         'The identifier may be null if the Tauri app uses an older plugin version that does not provide it. ' +
-         'Before starting a new session, check status first - if already connected to the correct app (matching identifier), ' +
-         'reuse the existing session. If identifier is null, you cannot verify the app identity. ' +
+         'Supports multiple concurrent app connections - each app runs on a unique port. ' +
+         'The most recently connected app becomes the "default" app used when no appIdentifier is specified. ' +
+         'Use action "status" to check connection state: returns single app format when 1 app connected, ' +
+         'or array format with "isDefault" indicator when multiple apps connected. ' +
+         'Action "stop" without appIdentifier stops ALL sessions; with appIdentifier stops only that app. ' +
+         'The identifier field (e.g., "com.example.myapp") uniquely identifies each app. ' +
          'REQUIRED before using other tauri_webview_* or tauri_plugin_* tools. ' +
          'Connects via WebSocket to the MCP Bridge plugin in the Tauri app. ' +
          'For browser automation, use Chrome DevTools MCP instead. ' +
@@ -237,7 +244,7 @@ export const TOOLS: ToolDefinition[] = [
       handler: async (args) => {
          const parsed = ManageDriverSessionSchema.parse(args);
 
-         return await manageDriverSession(parsed.action, parsed.host, parsed.port);
+         return await manageDriverSession(parsed.action, parsed.host, parsed.port, parsed.appIdentifier);
       },
    },
 
@@ -246,6 +253,7 @@ export const TOOLS: ToolDefinition[] = [
       description:
          '[Tauri Apps Only] Find DOM elements in a running Tauri app\'s webview. ' +
          'Requires active tauri_driver_session. ' +
+         MULTI_APP_DESC + ' ' +
          'For browser pages or documentation sites, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
       schema: FindElementSchema,
@@ -261,6 +269,7 @@ export const TOOLS: ToolDefinition[] = [
             selector: parsed.selector,
             strategy: parsed.strategy,
             windowId: parsed.windowId,
+            appIdentifier: parsed.appIdentifier,
          });
       },
    },
@@ -314,6 +323,7 @@ export const TOOLS: ToolDefinition[] = [
       description:
          '[Tauri Apps Only] Screenshot a running Tauri app\'s webview. ' +
          'Requires active tauri_driver_session. Captures only visible viewport. ' +
+         MULTI_APP_DESC + ' ' +
          'For browser screenshots, use Chrome DevTools MCP instead. ' +
          'For Electron apps, this will NOT work.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
@@ -331,6 +341,7 @@ export const TOOLS: ToolDefinition[] = [
             format: parsed.format,
             windowId: parsed.windowId,
             filePath: parsed.filePath,
+            appIdentifier: parsed.appIdentifier,
          });
 
          // If saved to file, return text confirmation
@@ -348,6 +359,7 @@ export const TOOLS: ToolDefinition[] = [
       description:
          '[Tauri Apps Only] Type text or send keyboard events in a Tauri app. ' +
          'Requires active tauri_driver_session. ' +
+         MULTI_APP_DESC + ' ' +
          'For browser keyboard input, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
       schema: KeyboardSchema,
@@ -366,6 +378,7 @@ export const TOOLS: ToolDefinition[] = [
                selectorOrKey: parsed.selector,
                textOrModifiers: parsed.text,
                windowId: parsed.windowId,
+               appIdentifier: parsed.appIdentifier,
             });
          }
          return await keyboard({
@@ -373,6 +386,7 @@ export const TOOLS: ToolDefinition[] = [
             selectorOrKey: parsed.key,
             textOrModifiers: parsed.modifiers,
             windowId: parsed.windowId,
+            appIdentifier: parsed.appIdentifier,
          });
       },
    },
@@ -382,6 +396,7 @@ export const TOOLS: ToolDefinition[] = [
       description:
          '[Tauri Apps Only] Wait for elements, text, or IPC events in a Tauri app. ' +
          'Requires active tauri_driver_session. ' +
+         MULTI_APP_DESC + ' ' +
          'For browser waits, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
       schema: WaitForSchema,
@@ -398,6 +413,7 @@ export const TOOLS: ToolDefinition[] = [
             value: parsed.value,
             timeout: parsed.timeout,
             windowId: parsed.windowId,
+            appIdentifier: parsed.appIdentifier,
          });
       },
    },
@@ -407,6 +423,7 @@ export const TOOLS: ToolDefinition[] = [
       description:
          '[Tauri Apps Only] Get computed CSS styles from elements in a Tauri app. ' +
          'Requires active tauri_driver_session. ' +
+         MULTI_APP_DESC + ' ' +
          'For browser style inspection, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
       schema: GetStylesSchema,
@@ -423,6 +440,7 @@ export const TOOLS: ToolDefinition[] = [
             properties: parsed.properties,
             multiple: parsed.multiple,
             windowId: parsed.windowId,
+            appIdentifier: parsed.appIdentifier,
          });
       },
    },
@@ -434,6 +452,7 @@ export const TOOLS: ToolDefinition[] = [
          'Requires active tauri_driver_session. Has access to window.__TAURI__. ' +
          'If you need a return value, it must be JSON-serializable. ' +
          'For functions that return values, use an IIFE: "(() => { return 5; })()" not "() => { return 5; }". ' +
+         MULTI_APP_DESC + ' ' +
          'For browser JS execution, use Chrome DevTools MCP instead.',
       category: TOOL_CATEGORIES.UI_AUTOMATION,
       schema: ExecuteJavaScriptSchema,
@@ -450,6 +469,7 @@ export const TOOLS: ToolDefinition[] = [
             script: parsed.script,
             args: parsed.args,
             windowId: parsed.windowId,
+            appIdentifier: parsed.appIdentifier,
          });
       },
    },
@@ -472,7 +492,11 @@ export const TOOLS: ToolDefinition[] = [
       handler: async (args) => {
          const parsed = ExecuteIPCCommandSchema.parse(args);
 
-         return await executeIPCCommand(parsed.command, parsed.args);
+         return await executeIPCCommand({
+            command: parsed.command,
+            args: parsed.args,
+            appIdentifier: parsed.appIdentifier,
+         });
       },
    },
 
@@ -494,7 +518,7 @@ export const TOOLS: ToolDefinition[] = [
       handler: async (args) => {
          const parsed = ManageIPCMonitoringSchema.parse(args);
 
-         return await manageIPCMonitoring(parsed.action);
+         return await manageIPCMonitoring(parsed.action, parsed.appIdentifier);
       },
    },
 
@@ -514,7 +538,7 @@ export const TOOLS: ToolDefinition[] = [
       handler: async (args) => {
          const parsed = GetIPCEventsSchema.parse(args);
 
-         return await getIPCEvents(parsed.filter);
+         return await getIPCEvents(parsed.filter, parsed.appIdentifier);
       },
    },
 
@@ -535,7 +559,7 @@ export const TOOLS: ToolDefinition[] = [
       handler: async (args) => {
          const parsed = EmitTestEventSchema.parse(args);
 
-         return await emitTestEvent(parsed.eventName, parsed.payload);
+         return await emitTestEvent(parsed.eventName, parsed.payload, parsed.appIdentifier);
       },
    },
 
@@ -552,8 +576,10 @@ export const TOOLS: ToolDefinition[] = [
          readOnlyHint: true,
          openWorldHint: false,
       },
-      handler: async () => {
-         return await getBackendState();
+      handler: async (args) => {
+         const parsed = GetBackendStateSchema.parse(args);
+
+         return await getBackendState({ appIdentifier: parsed.appIdentifier });
       },
    },
 

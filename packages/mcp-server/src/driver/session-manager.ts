@@ -2,9 +2,11 @@ import { z } from 'zod';
 
 import { getDefaultHost, getDefaultPort } from '../config.js';
 import { AppDiscovery } from './app-discovery.js';
-import { resetPluginClient, getExistingPluginClient, connectPlugin } from './plugin-client.js';
-import { getBackendState } from './plugin-commands.js';
+import { PluginClient } from './plugin-client.js';
 import { resetInitialization } from './webview-executor.js';
+import { createMcpLogger } from '../logger.js';
+
+const sessionLogger = createMcpLogger('SESSION');
 
 /**
  * Session Manager - Native IPC-based session management
@@ -28,30 +30,69 @@ export const ManageDriverSessionSchema = z.object({
       'Host address to connect to (e.g., 192.168.1.100). Falls back to MCP_BRIDGE_HOST or TAURI_DEV_HOST env vars'
    ),
    port: z.number().optional().describe('Port to connect to (default: 9223)'),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App identifier (port number or bundle ID) to stop. Only used with action "stop". If omitted, stops all sessions.'
+   ),
 });
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface SessionInfo {
+   name: string;
+   identifier: string | null;
+   host: string;
+   port: number;
+   client: PluginClient;
+   connected: boolean;
+}
 
 // ============================================================================
 // Module State
 // ============================================================================
 
 // AppDiscovery instance - recreated when host changes
-// Track current session info including app identifier for session reuse
-let appDiscovery: AppDiscovery | null = null,
-    currentSession: { name: string; identifier: string | null; host: string; port: number } | null = null;
+let appDiscovery: AppDiscovery | null = null;
+
+// Track multiple concurrent sessions keyed by port
+const activeSessions = new Map<number, SessionInfo>();
+
+// Track the default app (most recently connected)
+let defaultPort: number | null = null;
 
 /**
- * Check if a session is currently active.
- * @returns true if a session has been started and not stopped
+ * Check if any session is currently active.
+ * @returns true if at least one session exists
  */
 export function hasActiveSession(): boolean {
-   return currentSession !== null;
+   return activeSessions.size > 0;
 }
 
 /**
- * Get the current session info, or null if no session is active.
+ * Get a specific session by port.
  */
-export function getCurrentSession(): { name: string; identifier: string | null; host: string; port: number } | null {
-   return currentSession;
+export function getSession(port: number): SessionInfo | null {
+   return activeSessions.get(port) ?? null;
+}
+
+/**
+ * Get the default session (most recently connected).
+ */
+export function getDefaultSession(): SessionInfo | null {
+   if (defaultPort !== null && activeSessions.has(defaultPort)) {
+      const session = activeSessions.get(defaultPort);
+
+      return session ?? null;
+   }
+   return null;
+}
+
+/**
+ * Get all active sessions.
+ */
+export function getAllSessions(): SessionInfo[] {
+   return Array.from(activeSessions.values());
 }
 
 function getAppDiscovery(host: string): AppDiscovery {
@@ -60,6 +101,258 @@ function getAppDiscovery(host: string): AppDiscovery {
    }
 
    return appDiscovery;
+}
+
+/**
+ * Resolve target app from port or identifier.
+ * Returns the appropriate session based on the routing logic.
+ */
+export function resolveTargetApp(portOrIdentifier?: string | number): SessionInfo {
+   if (activeSessions.size === 0) {
+      throw new Error(
+         'No active session. Call tauri_driver_session with action "start" first to connect to a Tauri app.'
+      );
+   }
+
+   // Single app - return it
+   if (activeSessions.size === 1) {
+      const session = activeSessions.values().next().value;
+
+      if (!session) {
+         throw new Error('Session state inconsistent');
+      }
+      return session;
+   }
+
+   // Multiple apps - need identifier or use default
+   if (portOrIdentifier !== undefined) {
+      // Try port lookup first
+      const port = typeof portOrIdentifier === 'number'
+         ? portOrIdentifier
+         : parseInt(String(portOrIdentifier), 10);
+
+      if (!isNaN(port) && activeSessions.has(port)) {
+         const session = activeSessions.get(port);
+
+         if (session) {
+            return session;
+         }
+      }
+
+      // Try identifier match
+      for (const session of activeSessions.values()) {
+         if (session.identifier === String(portOrIdentifier)) {
+            return session;
+         }
+      }
+
+      throw new Error(formatAppNotFoundError(portOrIdentifier));
+   }
+
+   // Use default app
+   if (defaultPort !== null && activeSessions.has(defaultPort)) {
+      const session = activeSessions.get(defaultPort);
+
+      if (session) {
+         return session;
+      }
+   }
+
+   throw new Error('No default app set. This should not happen.');
+}
+
+/**
+ * Format error message when app not found.
+ */
+function formatAppNotFoundError(identifier: string | number): string {
+   const appList = Array.from(activeSessions.values())
+      .map((session) => {
+         const isDefault = session.port === defaultPort;
+
+         const defaultMarker = isDefault ? ' [DEFAULT]' : '';
+
+         return `  - ${session.port}: ${session.identifier || 'unknown'} (${session.host}:${session.port})${defaultMarker}`;
+      })
+      .join('\n');
+
+   return (
+      `App "${identifier}" not found.\n\n` +
+      `Connected apps:\n${appList}\n\n` +
+      'Use tauri_driver_session with action "status" to list all connected apps.'
+   );
+}
+
+/**
+ * Promote the next default app when the current default is removed.
+ * Selects the oldest remaining session (first in insertion order).
+ */
+function promoteNextDefault(): void {
+   if (activeSessions.size > 0) {
+      // Get first session (oldest)
+      const firstSession = activeSessions.values().next().value;
+
+      if (firstSession) {
+         defaultPort = firstSession.port;
+         sessionLogger.info(`Promoted port ${defaultPort} as new default app`);
+      } else {
+         defaultPort = null;
+      }
+   } else {
+      defaultPort = null;
+   }
+}
+
+async function handleStatusAction(): Promise<string> {
+   if (activeSessions.size === 0) {
+      return JSON.stringify({
+         connected: false,
+         app: null,
+         identifier: null,
+         host: null,
+         port: null,
+      });
+   }
+
+   if (activeSessions.size === 1) {
+      const session = activeSessions.values().next().value;
+
+      if (!session) {
+         return JSON.stringify({
+            connected: false,
+            app: null,
+            identifier: null,
+            host: null,
+            port: null,
+         });
+      }
+
+      return JSON.stringify({
+         connected: true,
+         app: session.name,
+         identifier: session.identifier,
+         host: session.host,
+         port: session.port,
+      });
+   }
+
+   const apps = Array.from(activeSessions.values()).map((session) => {
+      return {
+         name: session.name,
+         identifier: session.identifier,
+         host: session.host,
+         port: session.port,
+         isDefault: session.port === defaultPort,
+      };
+   });
+
+   return JSON.stringify({
+      connected: true,
+      apps,
+      totalCount: apps.length,
+      defaultPort,
+   });
+}
+
+async function handleStartAction(host?: string, port?: number): Promise<string> {
+   const configuredHost = host ?? getDefaultHost();
+
+   const configuredPort = port ?? getDefaultPort();
+
+   if (activeSessions.has(configuredPort)) {
+      return `Already connected to app on port ${configuredPort}`;
+   }
+
+   let connectedSession: { name: string; host: string; port: number } | null = null;
+
+   if (configuredHost !== 'localhost' && configuredHost !== '127.0.0.1') {
+      try {
+         connectedSession = await tryConnect('localhost', configuredPort);
+      } catch{
+         // ignore
+      }
+   }
+
+   if (!connectedSession) {
+      try {
+         connectedSession = await tryConnect(configuredHost, configuredPort);
+      } catch{
+         // ignore
+      }
+   }
+
+   if (!connectedSession) {
+      const localhostDiscovery = getAppDiscovery('localhost');
+
+      const firstApp = await localhostDiscovery.getFirstAvailableApp();
+
+      if (firstApp) {
+         try {
+            connectedSession = await tryConnect('localhost', firstApp.port);
+         } catch{
+            // ignore
+         }
+      }
+   }
+
+   if (!connectedSession) {
+      return `Session start failed - no Tauri app found at localhost or ${configuredHost}:${configuredPort}`;
+   }
+
+   const client = new PluginClient(connectedSession.host, connectedSession.port);
+
+   await client.connect();
+
+   const identifier = await fetchAppIdentifier(client);
+
+   const sessionInfo: SessionInfo = {
+      name: connectedSession.name,
+      identifier,
+      host: connectedSession.host,
+      port: connectedSession.port,
+      client,
+      connected: true,
+   };
+
+   activeSessions.set(connectedSession.port, sessionInfo);
+   defaultPort = connectedSession.port;
+
+   sessionLogger.info(
+      `Session started: ${sessionInfo.name} (${sessionInfo.host}:${sessionInfo.port}) [DEFAULT]`
+   );
+
+   return `Session started with app: ${sessionInfo.name} (${sessionInfo.host}:${sessionInfo.port}) [DEFAULT]`;
+}
+
+async function handleStopAction(appIdentifier?: string | number): Promise<string> {
+   if (appIdentifier !== undefined) {
+      const session = resolveTargetApp(appIdentifier);
+
+      session.client.disconnect();
+      activeSessions.delete(session.port);
+
+      if (session.port === defaultPort) {
+         promoteNextDefault();
+      }
+
+      sessionLogger.info(`Session stopped: ${session.name} (${session.host}:${session.port})`);
+      return `Session stopped: ${session.name} (${session.host}:${session.port})`;
+   }
+
+   for (const session of activeSessions.values()) {
+      session.client.disconnect();
+   }
+
+   activeSessions.clear();
+   defaultPort = null;
+
+   if (appDiscovery) {
+      await appDiscovery.disconnectAll();
+   }
+
+   resetInitialization();
+
+   sessionLogger.info('All sessions stopped');
+   return 'All sessions stopped';
 }
 
 // ============================================================================
@@ -84,19 +377,26 @@ async function tryConnect(host: string, port: number): Promise<{ name: string; h
 
 /**
  * Fetch the app identifier from the backend state.
- * Must be called after the singleton pluginClient is connected.
+ * Must be called after a PluginClient is connected.
  *
+ * @param client - The PluginClient to query
  * @returns The app identifier (bundle ID) or null if not available. Returns null when:
  *          - The plugin doesn't support the identifier field (older versions)
  *          - The backend state request fails
  *          - The identifier field is missing from the response
  */
-async function fetchAppIdentifier(): Promise<string | null> {
+async function fetchAppIdentifier(client: PluginClient): Promise<string | null> {
    try {
-      // Use existing client - called during session setup before currentSession is set
-      const stateJson = await getBackendState(true);
+      const response = await client.sendCommand({
+         command: 'invoke_tauri',
+         args: { command: 'plugin:mcp-bridge|get_backend_state', args: {} },
+      });
 
-      const state = JSON.parse(stateJson);
+      if (!response.success || !response.data) {
+         return null;
+      }
+
+      const state = response.data as { app?: { identifier?: string } };
 
       // Return null if identifier is not present (backward compat with older plugins)
       return state.app?.identifier ?? null;
@@ -118,137 +418,31 @@ async function fetchAppIdentifier(): Promise<string | null> {
  * @param action - 'start', 'stop', or 'status'
  * @param host - Optional host address (defaults to env var or localhost)
  * @param port - Optional port number (defaults to 9223)
+ * @param appIdentifier - Optional app identifier for 'stop' action (port or bundle ID)
  * @returns For 'start'/'stop': A message string describing the result.
- *          For 'status': A JSON string with connection details including:
- *          - `connected`: boolean indicating if connected
- *          - `app`: app name (or null if not connected)
- *          - `identifier`: app bundle ID (e.g., "com.example.app"), or null
- *          - `host`: connected host (or null)
- *          - `port`: connected port (or null)
+ *          For 'status': A JSON string with connection details
  */
 export async function manageDriverSession(
    action: 'start' | 'stop' | 'status',
    host?: string,
-   port?: number
+   port?: number,
+   appIdentifier?: string | number
 ): Promise<string> {
-   // Handle status action
-   if (action === 'status') {
-      const client = getExistingPluginClient();
-
-      if (client?.isConnected() && currentSession) {
-         return JSON.stringify({
-            connected: true,
-            app: currentSession.name,
-            identifier: currentSession.identifier,
-            host: currentSession.host,
-            port: currentSession.port,
-         });
-      }
-      return JSON.stringify({
-         connected: false,
-         app: null,
-         identifier: null,
-         host: null,
-         port: null,
-      });
-   }
-
-   if (action === 'start') {
-      // Reset any existing connections to ensure fresh connection
-      if (appDiscovery) {
-         await appDiscovery.disconnectAll();
-      }
-      resetPluginClient();
-
-      const configuredHost = host ?? getDefaultHost();
-
-      const configuredPort = port ?? getDefaultPort();
-
-      // Strategy 1: Try localhost first (most reliable)
-      if (configuredHost !== 'localhost' && configuredHost !== '127.0.0.1') {
-         try {
-            const session = await tryConnect('localhost', configuredPort);
-
-            // Connect the singleton pluginClient so status checks work
-            await connectPlugin(session.host, session.port);
-            // Fetch app identifier after singleton is connected
-            const identifier = await fetchAppIdentifier();
-
-            currentSession = { ...session, identifier };
-            return `Session started with app: ${session.name} (localhost:${session.port})`;
-         } catch{
-            // Localhost failed, will try configured host next
-         }
+   switch (action) {
+      case 'status': {
+         return handleStatusAction();
       }
 
-      // Strategy 2: Try the configured/provided host
-      try {
-         const session = await tryConnect(configuredHost, configuredPort);
-
-         // Connect the singleton pluginClient so status checks work
-         await connectPlugin(session.host, session.port);
-         // Fetch app identifier after singleton is connected
-         const identifier = await fetchAppIdentifier();
-
-         currentSession = { ...session, identifier };
-         return `Session started with app: ${session.name} (${session.host}:${session.port})`;
-      } catch{
-         // Configured host failed
+      case 'start': {
+         return handleStartAction(host, port);
       }
 
-      // Strategy 3: Auto-discover on localhost (scan port range)
-
-      const localhostDiscovery = getAppDiscovery('localhost');
-
-      const firstApp = await localhostDiscovery.getFirstAvailableApp();
-
-      if (firstApp) {
-         try {
-            // Reset client again to connect to discovered port
-            resetPluginClient();
-
-            const session = await tryConnect('localhost', firstApp.port);
-
-            // Connect the singleton pluginClient so status checks work
-            await connectPlugin(session.host, session.port);
-            // Fetch app identifier after singleton is connected
-            const identifier = await fetchAppIdentifier();
-
-            currentSession = { ...session, identifier };
-            return `Session started with app: ${session.name} (localhost:${session.port})`;
-         } catch{
-            // Discovery found app but connection failed
-         }
+      case 'stop': {
+         return handleStopAction(appIdentifier);
       }
 
-      // Strategy 4: Try default port on configured host as last resort
-      try {
-         resetPluginClient();
-
-         const session = await tryConnect(configuredHost, configuredPort);
-
-         // Connect the singleton pluginClient so status checks work
-         await connectPlugin(session.host, session.port);
-         // Fetch app identifier after singleton is connected
-         const identifier = await fetchAppIdentifier();
-
-         currentSession = { ...session, identifier };
-         return `Session started with app: ${session.name} (${session.host}:${session.port})`;
-      } catch{
-         // All attempts failed
-         currentSession = null;
-         return `Session started (native IPC mode - no Tauri app found at localhost or ${configuredHost}:${configuredPort})`;
+      default: {
+         return handleStopAction(appIdentifier);
       }
    }
-
-   // Stop action - disconnect all apps and reset initialization state
-   if (appDiscovery) {
-      await appDiscovery.disconnectAll();
-   }
-
-   resetPluginClient();
-   resetInitialization();
-   currentSession = null;
-
-   return 'Session stopped';
 }

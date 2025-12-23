@@ -116,7 +116,7 @@ describe('Webview Interactions Unit Tests', () => {
          await interact({ action: 'click', selector: 'button' });
 
          expect(mockExecuteInWebview).toHaveBeenCalledOnce();
-         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('click'), undefined);
+         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('click'), undefined, undefined);
       });
 
       it('should call executeScript when interact is called with swipe', async () => {
@@ -136,7 +136,7 @@ describe('Webview Interactions Unit Tests', () => {
 
          expect(mockExecuteInWebview).toHaveBeenCalledOnce();
          // Check for mouse/touch event handling in the script
-         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('MouseEvent'), undefined);
+         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('MouseEvent'), undefined, undefined);
       });
 
       it('should call executeScript when keyboard is called for key press', async () => {
@@ -149,7 +149,7 @@ describe('Webview Interactions Unit Tests', () => {
          await keyboard({ action: 'press', selectorOrKey: 'Enter', textOrModifiers: [ 'Control' ] });
 
          expect(mockExecuteInWebview).toHaveBeenCalledOnce();
-         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('press'), undefined);
+         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('press'), undefined, undefined);
       });
 
       it('should call executeInWebview when keyboard is called for typing', async () => {
@@ -162,7 +162,7 @@ describe('Webview Interactions Unit Tests', () => {
          const result = await keyboard({ action: 'type', selectorOrKey: '#input', textOrModifiers: 'Hello World' });
 
          expect(mockExecuteInWebview).toHaveBeenCalledOnce();
-         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('querySelector'), undefined);
+         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('querySelector'), undefined, undefined);
          expect(result).toContain('Typed');
       });
 
@@ -176,7 +176,7 @@ describe('Webview Interactions Unit Tests', () => {
          await focusElement({ selector: 'input' });
 
          expect(mockExecuteInWebview).toHaveBeenCalledOnce();
-         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('focus'), undefined);
+         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('focus'), undefined, undefined);
       });
 
       it('should blur active element when focusElement is called with empty selector', async () => {
@@ -189,7 +189,7 @@ describe('Webview Interactions Unit Tests', () => {
          await focusElement({ selector: 'body' });
 
          expect(mockExecuteInWebview).toHaveBeenCalledOnce();
-         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('focus'), undefined);
+         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('focus'), undefined, undefined);
       });
 
       it('should call executeScript when getStyles is called', async () => {
@@ -202,7 +202,7 @@ describe('Webview Interactions Unit Tests', () => {
          await getStyles({ selector: 'div', properties: [ 'color' ] });
 
          expect(mockExecuteInWebview).toHaveBeenCalledOnce();
-         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('getComputedStyle'), undefined);
+         expect(mockExecuteInWebview).toHaveBeenCalledWith(expect.stringContaining('getComputedStyle'), undefined, undefined);
       });
 
       it('should call executeInWebviewWithContext when executeJavaScript is called', async () => {

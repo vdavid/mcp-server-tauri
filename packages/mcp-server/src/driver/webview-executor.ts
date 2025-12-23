@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { getPluginClient, connectPlugin } from './plugin-client.js';
-import { hasActiveSession, getCurrentSession } from './session-manager.js';
+import { connectPlugin } from './plugin-client.js';
+import { hasActiveSession, getDefaultSession, resolveTargetApp } from './session-manager.js';
 import { createMcpLogger } from '../logger.js';
 import {
    buildScreenshotScript,
@@ -53,8 +53,8 @@ export async function ensureReady(): Promise<void> {
       );
    }
 
-   // Get session config and connect with explicit host/port
-   const session = getCurrentSession();
+   // Get default session for initial connection
+   const session = getDefaultSession();
 
    if (session) {
       await connectPlugin(session.host, session.port);
@@ -85,10 +85,11 @@ export interface ExecuteInWebviewResult {
  *
  * @param script - JavaScript code to execute in the webview context
  * @param windowId - Optional window label to target (defaults to "main")
+ * @param appIdentifier - Optional app identifier to target specific app
  * @returns Result of the script execution with window context
  */
-export async function executeInWebview(script: string, windowId?: string): Promise<string> {
-   const { result } = await executeInWebviewWithContext(script, windowId);
+export async function executeInWebview(script: string, windowId?: string, appIdentifier?: string | number): Promise<string> {
+   const { result } = await executeInWebviewWithContext(script, windowId, appIdentifier);
 
    return result;
 }
@@ -98,24 +99,22 @@ export async function executeInWebview(script: string, windowId?: string): Promi
  *
  * @param script - JavaScript code to execute in the webview context
  * @param windowId - Optional window label to target (defaults to "main")
+ * @param appIdentifier - Optional app identifier to target specific app
  * @returns Result of the script execution with window context
  */
 export async function executeInWebviewWithContext(
    script: string,
-   windowId?: string
+   windowId?: string,
+   appIdentifier?: string | number
 ): Promise<ExecuteInWebviewResult> {
    try {
       // Ensure we're fully initialized
       await ensureReady();
 
-      // Get session config to use correct host/port
-      const session = getCurrentSession();
+      // Resolve target session
+      const session = resolveTargetApp(appIdentifier);
 
-      if (!session) {
-         throw new Error('No active session');
-      }
-
-      const client = getPluginClient(session.host, session.port);
+      const client = session.client;
 
       // Send script directly - Rust handles wrapping and IPC callbacks.
       // Use 7s timeout (longer than Rust's 5s) so errors return before Node times out.
@@ -232,9 +231,16 @@ export async function initializeConsoleCapture(): Promise<string> {
  *
  * @param filter - Optional regex pattern to filter log messages
  * @param since - Optional ISO timestamp to filter logs after this time
+ * @param windowId - Optional window label to target (defaults to "main")
+ * @param appIdentifier - Optional app identifier to target specific app
  * @returns Formatted console logs as string
  */
-export async function getConsoleLogs(filter?: string, since?: string): Promise<string> {
+export async function getConsoleLogs(
+   filter?: string,
+   since?: string,
+   windowId?: string,
+   appIdentifier?: string | number
+): Promise<string> {
    const filterStr = filter ? filter.replace(/'/g, '\\\'') : '';
 
    const sinceStr = since || '';
@@ -262,7 +268,7 @@ export async function getConsoleLogs(filter?: string, since?: string): Promise<s
       ).join('\\n');
    `;
 
-   return executeInWebview(script);
+   return executeInWebview(script, windowId, appIdentifier);
 }
 
 /**
@@ -345,6 +351,7 @@ export interface CaptureScreenshotOptions {
    format?: 'png' | 'jpeg';
    quality?: number;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 /**
@@ -374,11 +381,11 @@ async function prepareHtml2canvasScript(format: 'png' | 'jpeg', quality: number)
 /**
  * Capture a screenshot of the entire webview.
  *
- * @param options - Screenshot options (format, quality, windowId)
+ * @param options - Screenshot options (format, quality, windowId, appIdentifier)
  * @returns Screenshot result with image content
  */
 export async function captureScreenshot(options: CaptureScreenshotOptions = {}): Promise<ScreenshotResult> {
-   const { format = 'png', quality = 90, windowId } = options;
+   const { format = 'png', quality = 90, windowId, appIdentifier } = options;
 
    // Primary implementation: Use native platform-specific APIs
    // - macOS: WKWebView takeSnapshot
@@ -387,7 +394,11 @@ export async function captureScreenshot(options: CaptureScreenshotOptions = {}):
    try {
       // Ensure we're fully initialized
       await ensureReady();
-      const client = getPluginClient();
+
+      // Resolve target session
+      const session = resolveTargetApp(appIdentifier);
+
+      const client = session.client;
 
       // Use longer timeout (15s) for native screenshot - the Rust code waits up to 10s
       const response = await client.sendCommand({

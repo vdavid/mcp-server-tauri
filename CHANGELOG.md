@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Multi-app support: Connect to multiple Tauri apps simultaneously
+- Default app concept: Most recently connected app is used when no identifier specified
+- App identifier parameter (`appIdentifier`) added to all webview and IPC tools
+- Port-based session tracking for handling duplicate bundle IDs
+
+### Changed
+- Session manager now uses `Map<port, SessionInfo>` instead of single session
+- Each session maintains its own `PluginClient` instance
+- `tauri_driver_session` status returns array format when multiple apps connected
+- `tauri_driver_session` stop without identifier stops all sessions
+- Tool descriptions updated to explain multi-app behavior
+
 ## [0.5.1] - 2025-12-21
 
 ### Fixed

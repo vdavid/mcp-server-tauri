@@ -283,26 +283,21 @@ export async function connectPlugin(host?: string, port?: number): Promise<void>
  * Ensures a session is active and connects to the plugin using session config.
  * This should be used by all tools that require a connected Tauri app.
  *
+ * @param appIdentifier - Optional app identifier to target specific app
  * @throws Error if no session is active
  */
-export async function ensureSessionAndConnect(): Promise<PluginClient> {
+export async function ensureSessionAndConnect(appIdentifier?: string | number): Promise<PluginClient> {
    // Import dynamically to avoid circular dependency
-   const { hasActiveSession, getCurrentSession } = await import('./session-manager.js');
+   const { resolveTargetApp } = await import('./session-manager.js');
 
-   if (!hasActiveSession()) {
-      throw new Error(
-         'No active session. Call tauri_driver_session with action "start" first to connect to a Tauri app.'
-      );
+   const session = resolveTargetApp(appIdentifier);
+
+   // Ensure client is connected
+   if (!session.client.isConnected()) {
+      await session.client.connect();
    }
 
-   const session = getCurrentSession();
-
-   if (!session) {
-      throw new Error('Session state is inconsistent. Please restart the session.');
-   }
-
-   await connectPlugin(session.host, session.port);
-   return getPluginClient(session.host, session.port);
+   return session.client;
 }
 
 export async function disconnectPlugin(): Promise<void> {

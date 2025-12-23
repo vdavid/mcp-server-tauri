@@ -26,7 +26,7 @@ describe('Session Manager E2E Tests', () => {
       it('should stop session successfully', async () => {
          const result = await manageDriverSession('stop');
 
-         expect(result).toBe('Session stopped');
+         expect(result).toBe('All sessions stopped');
       }, TIMEOUT);
    });
 

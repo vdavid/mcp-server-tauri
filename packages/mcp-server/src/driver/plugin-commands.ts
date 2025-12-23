@@ -4,12 +4,21 @@ import { ensureSessionAndConnect, getExistingPluginClient } from './plugin-clien
 export const ExecuteIPCCommandSchema = z.object({
    command: z.string(),
    args: z.unknown().optional(),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
 });
 
-export async function executeIPCCommand(command: string, args: unknown = {}): Promise<string> {
+export async function executeIPCCommand(options: {
+   command: string;
+   args?: unknown;
+   appIdentifier?: string | number;
+}): Promise<string> {
    try {
+      const { command, args = {}, appIdentifier } = options;
+
       // Ensure we have an active session and are connected
-      const client = await ensureSessionAndConnect();
+      const client = await ensureSessionAndConnect(appIdentifier);
 
       // Send IPC command via WebSocket to the mcp-bridge plugin
       const response = await client.sendCommand({
@@ -32,22 +41,25 @@ export async function executeIPCCommand(command: string, args: unknown = {}): Pr
 // Combined schema for managing IPC monitoring
 export const ManageIPCMonitoringSchema = z.object({
    action: z.enum([ 'start', 'stop' ]).describe('Action to perform: start or stop IPC monitoring'),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
 });
 
 // Keep individual schemas for backward compatibility if needed
 export const StartIPCMonitoringSchema = z.object({});
 export const StopIPCMonitoringSchema = z.object({});
 
-export async function manageIPCMonitoring(action: 'start' | 'stop'): Promise<string> {
+export async function manageIPCMonitoring(action: 'start' | 'stop', appIdentifier?: string | number): Promise<string> {
    if (action === 'start') {
-      return startIPCMonitoring();
+      return startIPCMonitoring(appIdentifier);
    }
-   return stopIPCMonitoring();
+   return stopIPCMonitoring(appIdentifier);
 }
 
-export async function startIPCMonitoring(): Promise<string> {
+export async function startIPCMonitoring(appIdentifier?: string | number): Promise<string> {
    try {
-      const result = await executeIPCCommand('plugin:mcp-bridge|start_ipc_monitor');
+      const result = await executeIPCCommand({ command: 'plugin:mcp-bridge|start_ipc_monitor', appIdentifier });
 
       const parsed = JSON.parse(result);
 
@@ -63,9 +75,9 @@ export async function startIPCMonitoring(): Promise<string> {
    }
 }
 
-export async function stopIPCMonitoring(): Promise<string> {
+export async function stopIPCMonitoring(appIdentifier?: string | number): Promise<string> {
    try {
-      const result = await executeIPCCommand('plugin:mcp-bridge|stop_ipc_monitor');
+      const result = await executeIPCCommand({ command: 'plugin:mcp-bridge|stop_ipc_monitor', appIdentifier });
 
       const parsed = JSON.parse(result);
 
@@ -83,11 +95,14 @@ export async function stopIPCMonitoring(): Promise<string> {
 
 export const GetIPCEventsSchema = z.object({
    filter: z.string().optional().describe('Filter events by command name'),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
 });
 
-export async function getIPCEvents(filter?: string): Promise<string> {
+export async function getIPCEvents(filter?: string, appIdentifier?: string | number): Promise<string> {
    try {
-      const result = await executeIPCCommand('plugin:mcp-bridge|get_ipc_events');
+      const result = await executeIPCCommand({ command: 'plugin:mcp-bridge|get_ipc_events', appIdentifier });
 
       const parsed = JSON.parse(result);
 
@@ -116,13 +131,20 @@ export async function getIPCEvents(filter?: string): Promise<string> {
 export const EmitTestEventSchema = z.object({
    eventName: z.string(),
    payload: z.unknown(),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
 });
 
-export async function emitTestEvent(eventName: string, payload: unknown): Promise<string> {
+export async function emitTestEvent(eventName: string, payload: unknown, appIdentifier?: string | number): Promise<string> {
    try {
-      const result = await executeIPCCommand('plugin:mcp-bridge|emit_event', {
-         eventName,
-         payload,
+      const result = await executeIPCCommand({
+         command: 'plugin:mcp-bridge|emit_event',
+         args: {
+            eventName,
+            payload,
+         },
+         appIdentifier,
       });
 
       const parsed = JSON.parse(result);
@@ -139,11 +161,15 @@ export async function emitTestEvent(eventName: string, payload: unknown): Promis
    }
 }
 
-export const GetWindowInfoSchema = z.object({});
+export const GetWindowInfoSchema = z.object({
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
+});
 
-export async function getWindowInfo(): Promise<string> {
+export async function getWindowInfo(appIdentifier?: string | number): Promise<string> {
    try {
-      const result = await executeIPCCommand('plugin:mcp-bridge|get_window_info');
+      const result = await executeIPCCommand({ command: 'plugin:mcp-bridge|get_window_info', appIdentifier });
 
       const parsed = JSON.parse(result);
 
@@ -159,7 +185,11 @@ export async function getWindowInfo(): Promise<string> {
    }
 }
 
-export const GetBackendStateSchema = z.object({});
+export const GetBackendStateSchema = z.object({
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
+});
 
 /**
  * Get backend state from the connected Tauri app.
@@ -171,8 +201,13 @@ export const GetBackendStateSchema = z.object({});
  * @param useExistingClient If true, uses the existing connected client without
  *        session validation. Used during session setup before currentSession is set.
  */
-export async function getBackendState(useExistingClient = false): Promise<string> {
+export async function getBackendState(options: {
+   useExistingClient?: boolean;
+   appIdentifier?: string | number;
+} = {}): Promise<string> {
    try {
+      const { useExistingClient = false, appIdentifier } = options;
+
       if (useExistingClient) {
          // During session setup, use the already-connected client directly
          const client = getExistingPluginClient();
@@ -194,7 +229,7 @@ export async function getBackendState(useExistingClient = false): Promise<string
       }
 
       // Normal mode: use executeIPCCommand which validates session
-      const result = await executeIPCCommand('plugin:mcp-bridge|get_backend_state');
+      const result = await executeIPCCommand({ command: 'plugin:mcp-bridge|get_backend_state', appIdentifier });
 
       const parsed = JSON.parse(result);
 
@@ -219,9 +254,9 @@ export const ListWindowsSchema = z.object({});
 /**
  * Lists all open webview windows in the Tauri application.
  */
-export async function listWindows(): Promise<string> {
+export async function listWindows(appIdentifier?: string | number): Promise<string> {
    try {
-      const client = await ensureSessionAndConnect();
+      const client = await ensureSessionAndConnect(appIdentifier);
 
       const response = await client.sendCommand({
          command: 'list_windows',
@@ -264,9 +299,10 @@ export async function resizeWindow(options: {
    height: number;
    windowId?: string;
    logical?: boolean;
+   appIdentifier?: string | number;
 }): Promise<string> {
    try {
-      const client = await ensureSessionAndConnect();
+      const client = await ensureSessionAndConnect(options.appIdentifier);
 
       const response = await client.sendCommand({
          command: 'resize_window',
@@ -301,6 +337,9 @@ export const ManageWindowSchema = z.object({
       .describe('Height in pixels (required for "resize" action)'),
    logical: z.boolean().optional().default(true)
       .describe('Use logical pixels (true, default) or physical pixels (false). Only for "resize"'),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
 });
 
 /**
@@ -320,17 +359,18 @@ export async function manageWindow(options: {
    width?: number;
    height?: number;
    logical?: boolean;
+   appIdentifier?: string | number;
 }): Promise<string> {
-   const { action, windowId, width, height, logical } = options;
+   const { action, windowId, width, height, logical, appIdentifier } = options;
 
    switch (action) {
       case 'list': {
-         return listWindows();
+         return listWindows(appIdentifier);
       }
 
       case 'info': {
          try {
-            const client = await ensureSessionAndConnect();
+            const client = await ensureSessionAndConnect(appIdentifier);
 
             const response = await client.sendCommand({
                command: 'get_window_info',
@@ -354,7 +394,7 @@ export async function manageWindow(options: {
             throw new Error('width and height are required for resize action');
          }
 
-         return resizeWindow({ width, height, windowId, logical });
+         return resizeWindow({ width, height, windowId, logical, appIdentifier });
       }
 
       default: {

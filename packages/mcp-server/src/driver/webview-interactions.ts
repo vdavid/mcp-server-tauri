@@ -15,11 +15,14 @@ import { SCRIPTS, buildScript, buildTypeScript, buildKeyEventScript } from './sc
 // ============================================================================
 
 /**
- * Base schema mixin for tools that can target a specific window.
- * All webview tools extend this to support multi-window applications.
+ * Base schema mixin for tools that can target a specific window and app.
+ * All webview tools extend this to support multi-window and multi-app scenarios.
  */
 export const WindowTargetSchema = z.object({
    windowId: z.string().optional().describe('Window label to target (defaults to "main")'),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID to target. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
 });
 
 // ============================================================================
@@ -110,12 +113,13 @@ export async function interact(options: {
    toX?: number;
    toY?: number;
    windowId?: string;
+   appIdentifier?: string | number;
 }): Promise<string> {
-   const { action, selector, x, y, duration, scrollX, scrollY, fromX, fromY, toX, toY, windowId } = options;
+   const { action, selector, x, y, duration, scrollX, scrollY, fromX, fromY, toX, toY, windowId, appIdentifier } = options;
 
    // Handle swipe action separately since it has different logic
    if (action === 'swipe') {
-      return performSwipe({ fromX, fromY, toX, toY, duration, windowId });
+      return performSwipe({ fromX, fromY, toX, toY, duration, windowId, appIdentifier });
    }
 
    // Handle focus action
@@ -123,7 +127,7 @@ export async function interact(options: {
       if (!selector) {
          throw new Error('Focus action requires a selector');
       }
-      return focusElement({ selector, windowId });
+      return focusElement({ selector, windowId, appIdentifier });
    }
 
    const script = buildScript(SCRIPTS.interact, {
@@ -137,7 +141,7 @@ export async function interact(options: {
    });
 
    try {
-      return await executeInWebview(script, windowId);
+      return await executeInWebview(script, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -152,10 +156,11 @@ interface SwipeOptions {
    toY?: number;
    duration?: number;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 async function performSwipe(options: SwipeOptions): Promise<string> {
-   const { fromX, fromY, toX, toY, duration = 300, windowId } = options;
+   const { fromX, fromY, toX, toY, duration = 300, windowId, appIdentifier } = options;
 
    if (fromX === undefined || fromY === undefined || toX === undefined || toY === undefined) {
       throw new Error('Swipe action requires fromX, fromY, toX, and toY coordinates');
@@ -164,7 +169,7 @@ async function performSwipe(options: SwipeOptions): Promise<string> {
    const script = buildScript(SCRIPTS.swipe, { fromX, fromY, toX, toY, duration });
 
    try {
-      return await executeInWebview(script, windowId);
+      return await executeInWebview(script, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -177,6 +182,7 @@ export interface ScreenshotOptions {
    format?: 'png' | 'jpeg';
    windowId?: string;
    filePath?: string;
+   appIdentifier?: string | number;
 }
 
 export interface ScreenshotFileResult {
@@ -185,10 +191,10 @@ export interface ScreenshotFileResult {
 }
 
 export async function screenshot(options: ScreenshotOptions = {}): Promise<ScreenshotResult | ScreenshotFileResult> {
-   const { quality, format = 'png', windowId, filePath } = options;
+   const { quality, format = 'png', windowId, filePath, appIdentifier } = options;
 
    // Use the native screenshot function from webview-executor
-   const result = await captureScreenshot({ format, quality, windowId });
+   const result = await captureScreenshot({ format, quality, windowId, appIdentifier });
 
    // If filePath is provided, write to file instead of returning base64
    if (filePath) {
@@ -218,10 +224,11 @@ export interface KeyboardOptions {
    textOrModifiers?: string | string[];
    modifiers?: string[];
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 export async function keyboard(options: KeyboardOptions): Promise<string> {
-   const { action, selectorOrKey, textOrModifiers, modifiers, windowId } = options;
+   const { action, selectorOrKey, textOrModifiers, modifiers, windowId, appIdentifier } = options;
 
    // Handle the different parameter combinations based on action
    if (action === 'type') {
@@ -236,7 +243,7 @@ export async function keyboard(options: KeyboardOptions): Promise<string> {
       const script = buildTypeScript(selector, text);
 
       try {
-         return await executeInWebview(script, windowId);
+         return await executeInWebview(script, windowId, appIdentifier);
       } catch(error: unknown) {
          const message = error instanceof Error ? error.message : String(error);
 
@@ -256,7 +263,7 @@ export async function keyboard(options: KeyboardOptions): Promise<string> {
    const script = buildKeyEventScript(action, key, mods || []);
 
    try {
-      return await executeInWebview(script, windowId);
+      return await executeInWebview(script, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -269,15 +276,16 @@ export interface WaitForOptions {
    value: string;
    timeout?: number;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 export async function waitFor(options: WaitForOptions): Promise<string> {
-   const { type, value, timeout = 5000, windowId } = options;
+   const { type, value, timeout = 5000, windowId, appIdentifier } = options;
 
    const script = buildScript(SCRIPTS.waitFor, { type, value, timeout });
 
    try {
-      return await executeInWebview(script, windowId);
+      return await executeInWebview(script, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -290,10 +298,11 @@ export interface GetStylesOptions {
    properties?: string[];
    multiple?: boolean;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 export async function getStyles(options: GetStylesOptions): Promise<string> {
-   const { selector, properties, multiple = false, windowId } = options;
+   const { selector, properties, multiple = false, windowId, appIdentifier } = options;
 
    const script = buildScript(SCRIPTS.getStyles, {
       selector,
@@ -302,7 +311,7 @@ export async function getStyles(options: GetStylesOptions): Promise<string> {
    });
 
    try {
-      return await executeInWebview(script, windowId);
+      return await executeInWebview(script, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -314,10 +323,11 @@ export interface ExecuteJavaScriptOptions {
    script: string;
    args?: unknown[];
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 export async function executeJavaScript(options: ExecuteJavaScriptOptions): Promise<string> {
-   const { script, args, windowId } = options;
+   const { script, args, windowId, appIdentifier } = options;
 
    // If args are provided, we need to inject them into the script context
    const wrappedScript = args && args.length > 0
@@ -330,7 +340,7 @@ export async function executeJavaScript(options: ExecuteJavaScriptOptions): Prom
       : script;
 
    try {
-      const { result, windowLabel, warning } = await executeInWebviewWithContext(wrappedScript, windowId);
+      const { result, windowLabel, warning } = await executeInWebviewWithContext(wrappedScript, windowId, appIdentifier);
 
       // Build response with window context
       let response = result;
@@ -353,15 +363,16 @@ export async function executeJavaScript(options: ExecuteJavaScriptOptions): Prom
 export interface FocusElementOptions {
    selector: string;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 export async function focusElement(options: FocusElementOptions): Promise<string> {
-   const { selector, windowId } = options;
+   const { selector, windowId, appIdentifier } = options;
 
    const script = buildScript(SCRIPTS.focus, { selector });
 
    try {
-      return await executeInWebview(script, windowId);
+      return await executeInWebview(script, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -373,18 +384,19 @@ export interface FindElementOptions {
    selector: string;
    strategy: string;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 /**
  * Find an element using various selector strategies.
  */
 export async function findElement(options: FindElementOptions): Promise<string> {
-   const { selector, strategy, windowId } = options;
+   const { selector, strategy, windowId, appIdentifier } = options;
 
    const script = buildScript(SCRIPTS.findElement, { selector, strategy });
 
    try {
-      return await executeInWebview(script, windowId);
+      return await executeInWebview(script, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -396,16 +408,17 @@ export interface GetConsoleLogsOptions {
    filter?: string;
    since?: string;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 /**
  * Get console logs from the webview.
  */
 export async function getConsoleLogs(options: GetConsoleLogsOptions = {}): Promise<string> {
-   const { filter, since } = options;
+   const { filter, since, windowId, appIdentifier } = options;
 
    try {
-      return await getConsoleLogsFromCapture(filter, since);
+      return await getConsoleLogsFromCapture(filter, since, windowId, appIdentifier);
    } catch(error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
 

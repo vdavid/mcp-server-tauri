@@ -9,6 +9,9 @@ export const ReadLogsSchema = z.object({
    filter: z.string().optional().describe('Regex or keyword to filter logs'),
    since: z.string().optional().describe('ISO timestamp to filter logs since (e.g. 2023-10-27T10:00:00Z)'),
    windowId: z.string().optional().describe('Window label for console logs (defaults to "main")'),
+   appIdentifier: z.union([ z.string(), z.number() ]).optional().describe(
+      'App port or bundle ID for console logs. Defaults to the only connected app or the default app if multiple are connected.'
+   ),
 });
 
 export interface ReadLogsOptions {
@@ -17,17 +20,18 @@ export interface ReadLogsOptions {
    filter?: string;
    since?: string;
    windowId?: string;
+   appIdentifier?: string | number;
 }
 
 export async function readLogs(options: ReadLogsOptions): Promise<string> {
-   const { source, lines = 50, filter, since, windowId } = options;
+   const { source, lines = 50, filter, since, windowId, appIdentifier } = options;
 
    try {
       let output = '';
 
       // Handle console logs (webview JS logs)
       if (source === 'console') {
-         return await getConsoleLogs({ filter, since, windowId });
+         return await getConsoleLogs({ filter, since, windowId, appIdentifier });
       }
 
       if (source === 'android') {
