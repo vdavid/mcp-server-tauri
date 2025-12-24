@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 /* eslint-disable */
 
-const fs = require('fs');
-const path = require('path');
+import { readFileSync, writeFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const version = process.argv[2];
 
@@ -11,10 +15,10 @@ if (!version) {
   process.exit(1);
 }
 
-const serverJsonPath = path.join(__dirname, '..', 'server.json');
+const serverJsonPath = join(__dirname, '..', 'server.json');
 
 try {
-  const data = JSON.parse(fs.readFileSync(serverJsonPath, 'utf8'));
+  const data = JSON.parse(readFileSync(serverJsonPath, 'utf8'));
 
   data.version = version;
 
@@ -22,7 +26,7 @@ try {
     data.packages[0].version = version;
   }
 
-  fs.writeFileSync(serverJsonPath, JSON.stringify(data, null, 2) + '\n');
+  writeFileSync(serverJsonPath, JSON.stringify(data, null, 2) + '\n');
 
   console.log(`Updated server.json to version ${version}`);
 } catch (error) {
